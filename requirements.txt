@@ -1,0 +1,6 @@
+torch
+accelerate
+bitsandbytes
+git+https://github.com/zphang/transformers@llama_push
+git+https://github.com/qwopqwop200/GPTQ-for-LLaMa.git
+git+https://github.com/huggingface/peft.git
