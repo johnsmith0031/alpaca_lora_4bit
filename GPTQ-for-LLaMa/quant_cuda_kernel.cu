@@ -648,3 +648,54 @@ void vecquant4transposematmul_half_cuda(
     })
   ));
 }
+
+template <typename scalar_t>
+__global__ void VecQuant4ReconsKernel(
+    const       int* __restrict__ mat,
+           scalar_t* __restrict__ res,
+    const  scalar_t* __restrict__ scales,
+    const  scalar_t* __restrict__ zeros,
+    int height,
+    int width
+) {
+  int b = blockIdx.z;
+  int h = BLOCKHEIGHT4 * blockIdx.x;
+  int w = BLOCKWIDTH * blockIdx.y + threadIdx.x;
+  int n_rows = h * 8 + b;
+  int n_cols = w;
+  scalar_t scale = scales[w];
+  scalar_t zero = zeros[w];
+  int i = width * h + width * (b / 8) + w;
+  int shift = b % 8 * 4;
+  unsigned int tmp = as_unsigned(mat[i]);
+  scalar_t result = (scale * scalar_t((tmp >> shift) & 0xF) - zero);
+  res[n_rows * width + n_cols] = result;
+}
+
+void vecquant4recons_cuda(
+  torch::Tensor mat,
+  torch::Tensor res,
+  torch::Tensor scales,
+  torch::Tensor zeros
+) {
+  int batch = BLOCKWIDTH;
+  int height = mat.size(0);
+  int width = mat.size(1);
+  
+  dim3 blocks(
+    (height + BLOCKHEIGHT4 - 1) / BLOCKHEIGHT4,
+    (width + BLOCKWIDTH - 1) / BLOCKWIDTH,
+    batch
+  );
+  dim3 threads(BLOCKWIDTH);
+
+  AT_DISPATCH_FLOATING_TYPES_AND_HALF(
+    scales.type(), "vecquant4recons_cuda", ([&] {
+      VecQuant4ReconsKernel<<<blocks, threads>>>(
+        mat.data<int>(), res.data<scalar_t>(),
+        scales.data<scalar_t>(), zeros.data<scalar_t>(),
+        height, width
+      );
+    })
+  );
+}

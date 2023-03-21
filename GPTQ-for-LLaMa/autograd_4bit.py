@@ -5,6 +5,19 @@ import torch.nn as nn
 import time
 
 
+# Global Buffer
+buffer_mat_dic = {}
+use_new = True
+auto_switch = True
+auto_switch_thd = 16
+
+
+def get_buffer(shape_of_qweight, dtype=torch.float16, device='cuda'):
+    if shape_of_qweight not in buffer_mat_dic.keys():
+        buffer_mat_dic[shape_of_qweight] = torch.zeros((shape_of_qweight[0] * 8, shape_of_qweight[1]), dtype=dtype, device=device)
+    return buffer_mat_dic[shape_of_qweight]
+    
+
 def matmul4bit(x, qweight, scales, zeros):
     """
     input x: (n, m)
@@ -87,6 +100,23 @@ def matmul4bit_transpose_half(x, qweight, scales, zeros):
     return y.reshape(outshape)
     
 
+def fast_4bit_forward(x, qweight, scales, zeros, bias):
+    use_new_flag = use_new
+    if auto_switch:
+        if x.shape[1] > auto_switch_thd:
+            use_new_flag = True
+        else:
+            use_new_flag = False
+    if use_new_flag:
+        buffer = get_buffer(qweight.shape, dtype=scales.dtype, device=qweight.device)
+        quant.quant_cuda.vecquant4recons(qweight, buffer, scales, zeros)
+        output = torch.matmul(x, buffer)
+    else:
+        output = matmul4bit(x, qweight, scales.float(), zeros.float())
+    output += bias
+    return output
+    
+
 class AutogradMatmul4bit(torch.autograd.Function):
 
     @staticmethod
@@ -94,12 +124,7 @@ class AutogradMatmul4bit(torch.autograd.Function):
         ctx.save_for_backward(qweight, scales, zeros)
         
         # equals to torch.matmul(x, qweight)
-        if x.dtype == torch.float32:
-            output = matmul4bit(x, qweight, scales, zeros).clone()
-        elif x.dtype == torch.float16:
-            output = matmul4bit_half(x, qweight, scales, zeros).clone()
-        else:
-            raise ValueError('Only float and half are supportted.')
+        output = matmul4bit(x, qweight, scales, zeros).clone()
         
         return output
 
@@ -108,12 +133,7 @@ class AutogradMatmul4bit(torch.autograd.Function):
         qweight, scales, zeros = ctx.saved_tensors
         
         # compute x @ qweight.T = (qweight @ x.T).T = f(x, qweight).T
-        if grad_output.dtype == torch.float32:
-            grad = matmul4bit_transpose(grad_output, qweight, scales, zeros)
-        elif grad_output.dtype == torch.float16:
-            grad = matmul4bit_transpose_half(grad_output, qweight, scales, zeros)
-        else:
-            raise ValueError('Only float and half are supportted.')
+        grad = matmul4bit_transpose(grad_output, qweight, scales, zeros)
         
         return grad, None, None, None
 
@@ -135,8 +155,7 @@ class Autograd4bitQuantLinear(nn.Module):
         )
 
     def forward(self, x):
-        out = AutogradMatmul4bit.apply(x, self.qweight, self.scales, self.zeros)
-        out += self.bias
+        out = fast_4bit_forward(x, self.qweight, self.scales, self.zeros, self.bias)
         return out
 
 
