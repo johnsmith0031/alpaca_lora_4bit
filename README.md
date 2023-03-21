@@ -3,6 +3,8 @@ Made some adjust for the code in peft and gptq for llama, and make it possible f
 <br>
 ~Still numerically unstable.~ Resolved.
 <br>
+Reconstruct fp16 matrix from 4bit data and call torch.matmul largely increased the inference speed.
+<br>
 # Requirements
 gptq-for-llama: https://github.com/qwopqwop200/GPTQ-for-LLaMa<br>
 peft: https://github.com/huggingface/peft.git<br>
