@@ -7,14 +7,44 @@ Reconstruct fp16 matrix from 4bit data and call torch.matmul largely increased t
 <br>
 Added install script for windows and linux.
 <br>
+
 # Requirements
 gptq-for-llama: https://github.com/qwopqwop200/GPTQ-for-LLaMa<br>
 peft: https://github.com/huggingface/peft.git<br>
 <br>
-# Install
-copy files from GPTQ-for-LLaMa into GPTQ-for-LLaMa path and re-compile cuda extension<br>
-copy files from peft/tuners/lora.py to peft path, replace it<br>
-<br>
-# Finetuning
-The same finetune script from https://github.com/tloen/alpaca-lora can be used.<br>
 
+# Install
+~copy files from GPTQ-for-LLaMa into GPTQ-for-LLaMa path and re-compile cuda extension~<br>
+~copy files from peft/tuners/lora.py to peft path, replace it~<br>
+
+<br>
+Linux:
+
+```
+./install.sh
+```
+
+<br>
+Windows:
+
+```
+./install.bat
+```
+<br>
+
+# Finetune
+~The same finetune script from https://github.com/tloen/alpaca-lora can be used.~<br>
+
+After installation, this script can be used:
+
+```
+python finetune.py
+```
+
+# Inference
+
+After installation, this script can be used:
+
+```
+python inference.py
+```
