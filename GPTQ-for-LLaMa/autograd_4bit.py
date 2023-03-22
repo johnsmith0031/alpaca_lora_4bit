@@ -198,18 +198,18 @@ def model_to_float(model):
 def load_llama_model_4bit_low_ram(config_path, model_path, half=False):
     import transformers
     import accelerate
-    from transformers import LLaMAConfig, LLaMAForCausalLM, LLaMATokenizer
+    from transformers import LlamaConfig, LlamaForCausalLM, LlamaTokenizer
     from modelutils import find_layers
     
     print("Loading Model ...")
     t0 = time.time()
 
     with accelerate.init_empty_weights():
-        config = LLaMAConfig.from_pretrained(config_path)
+        config = LlamaConfig.from_pretrained(config_path)
         torch.set_default_dtype(torch.half)
         transformers.modeling_utils._init_weights = False
         torch.set_default_dtype(torch.half)
-        model = LLaMAForCausalLM(config)
+        model = LlamaForCausalLM(config)
         torch.set_default_dtype(torch.float)
         model = model.eval()
         layers = find_layers(model)
@@ -224,7 +224,7 @@ def load_llama_model_4bit_low_ram(config_path, model_path, half=False):
     if half:
         model_to_half(model)
 
-    tokenizer = LLaMATokenizer.from_pretrained(config_path)
+    tokenizer = LlamaTokenizer.from_pretrained(config_path)
     tokenizer.truncation_side = 'left'
 
     print(f"Loaded the model in {(time.time()-t0):.2f} seconds.")
