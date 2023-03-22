@@ -45,3 +45,24 @@ After installation, this script can be used:
 ```
 python inference.py
 ```
+
+# Text Generation Webui Monkey Patch
+
+Clone the latest version of text generation webui and copy all the files into ./text-generation-webui/
+```
+git clone https://github.com/oobabooga/text-generation-webui.git
+```
+
+Open server.py and insert a line at the beginning
+```
+import custom_monkey_patch # apply monkey patch
+import gc
+import io
+...
+```
+
+Use the command to run
+
+```
+python server.py
+```
