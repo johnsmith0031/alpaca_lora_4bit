@@ -20,7 +20,7 @@ cp ./GPTQ-for-LLaMa/quant_cuda.cpp ./repository/GPTQ-for-LLaMa/quant_cuda.cpp
 cp ./GPTQ-for-LLaMa/quant_cuda_kernel.cu ./repository/GPTQ-for-LLaMa/quant_cuda_kernel.cu
 
 # Copy autograd_4bit.py into ./repository/GPTQ-for-LLaMa/autograd_4bit.py
-cp ./autograd_4bit.py ./repository/GPTQ-for-LLaMa/autograd_4bit.py
+cp ./GPTQ-for-LLaMa/autograd_4bit.py ./repository/GPTQ-for-LLaMa/autograd_4bit.py
 
 # Install quant_cuda and cd into ./repository/GPTQ-for-LLaMa
 cd ./repository/GPTQ-for-LLaMa
