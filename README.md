@@ -17,20 +17,17 @@ peft: https://github.com/huggingface/peft.git<br>
 ~copy files from GPTQ-for-LLaMa into GPTQ-for-LLaMa path and re-compile cuda extension~<br>
 ~copy files from peft/tuners/lora.py to peft path, replace it~<br>
 
-<br>
 Linux:
 
 ```
 ./install.sh
 ```
 
-<br>
 Windows:
 
 ```
 ./install.bat
 ```
-<br>
 
 # Finetune
 ~The same finetune script from https://github.com/tloen/alpaca-lora can be used.~<br>
