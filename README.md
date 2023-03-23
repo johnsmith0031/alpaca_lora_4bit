@@ -6,12 +6,16 @@ Made some adjust for the code in peft and gptq for llama, and make it possible f
 # Update Logs
 * Resolved numerically unstable issue
 <br>
+
 * Reconstruct fp16 matrix from 4bit data and call torch.matmul largely increased the inference speed.
 <br>
+
 * Added install script for windows and linux.
 <br>
-* Added Gradient Checkpointing. Now It can finetune 30b model 4bit on a single GPU with 24G VRAM. (finetune.py updated)
+
+* Added Gradient Checkpointing. Now It can finetune 30b model 4bit on a single GPU with 24G VRAM with Gradient Checkpointing enabled. (finetune.py updated) (but would reduce training speed, so if having enough VRAM this option is not needed)
 <br>
+
 * Added install manual by s4rduk4r
 <br>
 
