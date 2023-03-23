@@ -631,7 +631,7 @@ __global__ void VecQuant4TransposeMatMulHalfKernel(
 #if __CUDA_ARCH__ < 700 && __CUDA_ARCH__ > 600
   atomicAddHalf(&mul2[n_cols * height * 8 + n_rows], res);
 #else
-  atomicAddHalf(&mul2[n_cols * height * 8 + n_rows], res);
+  atomicAdd(&mul2[n_cols * height * 8 + n_rows], res);
 #endif
 #endif
 }
