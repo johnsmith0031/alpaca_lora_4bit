@@ -42,6 +42,8 @@ TARGET_MODULES = [
     "q_proj",
     "v_proj",
 ]
+GRADIENT_CHECKPOINTING = False
+GRADIENT_CHECKPOINTING_RATIO = 1
 warmup_steps = 50
 save_steps = 50
 save_total_limit = 3
@@ -103,6 +105,12 @@ def tokenize(prompt):
 data = data.shuffle().map(lambda x: tokenize(x))
 print('Train Data: {:.2f}%'.format(exceed_count / len(data) * 100), 'outliers')
 train_data = data
+
+# Use gradient checkpointing
+if GRADIENT_CHECKPOINTING:
+    print('Applying gradient checkpointing ...')
+    from gradient_checkpointing import apply_gradient_checkpointing
+    apply_gradient_checkpointing(model, checkpoint_ratio=GRADIENT_CHECKPOINTING_RATIO)
 
 trainer = transformers.Trainer(
     model=model,

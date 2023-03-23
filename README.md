@@ -1,11 +1,18 @@
 # Alpaca Lora 4bit
 Made some adjust for the code in peft and gptq for llama, and make it possible for lora finetuning with a 4 bits base model. The same adjustment can be made for 2, 3 and 8 bits.
 <br>
-~Still numerically unstable.~ Resolved.
+* Install Manual by s4rduk4r: https://github.com/s4rduk4r/alpaca_lora_4bit_readme/blob/main/README.md
+
+# Update Logs
+* Resolved numerically unstable issue
 <br>
-Reconstruct fp16 matrix from 4bit data and call torch.matmul largely increased the inference speed.
+* Reconstruct fp16 matrix from 4bit data and call torch.matmul largely increased the inference speed.
 <br>
-Added install script for windows and linux.
+* Added install script for windows and linux.
+<br>
+* Added Gradient Checkpointing. Now It can finetune 30b model 4bit on a single GPU with 24G VRAM. (finetune.py updated)
+<br>
+* Added install manual by s4rduk4r
 <br>
 
 # Requirements
