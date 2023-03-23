@@ -36,7 +36,7 @@ LEARNING_RATE = 2e-4
 CUTOFF_LEN = 256
 LORA_R = 8
 LORA_ALPHA = 16
-LORA_DROPOUT = 0.05
+LORA_DROPOUT = 0.05 # should be 0 if gradient checkpointing is on
 VAL_SET_SIZE = 0
 TARGET_MODULES = [
     "q_proj",
@@ -48,6 +48,10 @@ warmup_steps = 50
 save_steps = 50
 save_total_limit = 3
 logging_steps = 10
+
+if LORA_DROPOUT > 0 and GRADIENT_CHECKPOINTING:
+    LORA_DROPOUT = 0
+    print('Disable Dropout.')
 
 # Load Basic Model
 model, tokenizer = load_llama_model_4bit_low_ram(config_path, model_path)
