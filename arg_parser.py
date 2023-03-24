@@ -43,6 +43,8 @@ def parse_commandline():
     parser_training.add_argument("--lora_r", default=8, type=int, help="Default: %(default)s")
     parser_training.add_argument("--lora_alpha", default=16, type=int, help="Default: %(default)s")
     parser_training.add_argument("--lora_dropout", default=0.05, type=float, help="Default: %(default)s")
+    parser_training.add_argument("--grad_chckpt", action="store_true", required=False, help="Use gradient checkpoint. For 30B model. Default: %(default)s")
+    parser_training.add_argument("--grad_chckpt_ratio", default=1, type=float, help="Gradient checkpoint ratio. Default: %(default)s")
     parser_training.add_argument("--val_set_size", default=0.2, type=float, help="Validation set size. Default: %(default)s")
     parser_training.add_argument("--warmup_steps", default=50, type=int, help="Default: %(default)s")
     parser_training.add_argument("--save_steps", default=50, type=int, help="Default: %(default)s")
@@ -72,6 +74,8 @@ def get_config() -> Finetune4bConfig:
         lora_alpha=args["lora_alpha"], 
         lora_dropout=args["lora_dropout"],
         val_set_size=args["val_set_size"],
+        gradient_checkpointing=args["grad_chckpt"],
+        gradient_checkpointing_ratio=args["grad_chckpt_ratio"],
         warmup_steps=args["warmup_steps"],
         save_steps=args["save_steps"],
         save_total_limit=args["save_total_limit"],

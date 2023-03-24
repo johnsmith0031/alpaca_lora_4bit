@@ -40,6 +40,8 @@ ft_config = get_config()
 # * Show loaded parameters
 print(f"{ft_config}\n")
 
+if ft_config.gradient_checkpointing:
+    print('Disable Dropout.')
 
 # Load Basic Model
 model, tokenizer = load_llama_model_4bit_low_ram(ft_config.llama_q4_config_dir, ft_config.llama_q4_model)
@@ -70,7 +72,6 @@ for n, m in model.named_modules():
 tokenizer.pad_token_id = 0
 
 if not ft_config.skip:
-    # ! TODO: Refactor to load both SAD and LLAMA datasets
     # Load Data
     data = None
     match ft_config.ds_type:
@@ -84,6 +85,12 @@ if not ft_config.skip:
             raise NotImplementedError("ERROR: Unknown dataset format")
     data.prepare_data()
     ####
+
+    # Use gradient checkpointing
+    if ft_config.gradient_checkpointing:
+        print('Applying gradient checkpointing ...')
+        from gradient_checkpointing import apply_gradient_checkpointing
+        apply_gradient_checkpointing(model, checkpoint_ratio=ft_config.gradient_checkpointing_ratio)
 
     trainer = transformers.Trainer(
         model=model,
@@ -109,19 +116,21 @@ if not ft_config.skip:
     )
     model.config.use_cache = False
 
+    # Set Model dict
+    old_state_dict = model.state_dict
+    model.state_dict = (
+        lambda self, *_, **__: get_peft_model_state_dict(self, old_state_dict())
+    ).__get__(model, type(model))
 
-# Set Model dict
-old_state_dict = model.state_dict
-model.state_dict = (
-    lambda self, *_, **__: get_peft_model_state_dict(self, old_state_dict())
-).__get__(model, type(model))
+    # Run Trainer
+    trainer.train()
 
-# Run Trainer
-trainer.train()
+    print('Train completed.')
 
-print('Train completed.')
-
-# Save Model
-model.save_pretrained(ft_config.lora_out_dir)
+if not ft_config.checkpoint:
+    # Save Model
+    model.save_pretrained(ft_config.lora_out_dir)
+else:
+    raise NotImplemented("TODO: Merge model + LoRA and save the whole checkpoint")
 
 print('Model Saved.')
