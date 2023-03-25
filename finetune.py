@@ -38,13 +38,14 @@ import train_data
 ft_config = get_config()
 
 # * Show loaded parameters
-print(f"{ft_config}\n")
+if ft_config.local_rank == 0:
+    print(f"{ft_config}\n")
 
 if ft_config.gradient_checkpointing:
     print('Disable Dropout.')
 
 # Load Basic Model
-model, tokenizer = load_llama_model_4bit_low_ram(ft_config.llama_q4_config_dir, ft_config.llama_q4_model)
+model, tokenizer = load_llama_model_4bit_low_ram(ft_config.llama_q4_config_dir, ft_config.llama_q4_model, device_map=ft_config.device_map)
 
 # Config Lora
 lora_config = LoraConfig(
@@ -92,6 +93,11 @@ if not ft_config.skip:
         from gradient_checkpointing import apply_gradient_checkpointing
         apply_gradient_checkpointing(model, checkpoint_ratio=ft_config.gradient_checkpointing_ratio)
 
+    # Disable Trainer's DataParallel for multigpu
+    if not ft_config.ddp and torch.cuda.device_count() > 1:
+        model.is_parallelizable = True
+        model.model_parallel = True
+
     trainer = transformers.Trainer(
         model=model,
         train_dataset=data.train_data,
@@ -110,7 +116,8 @@ if not ft_config.skip:
             save_steps=ft_config.save_steps,
             output_dir=ft_config.lora_out_dir,
             save_total_limit=ft_config.save_total_limit,
-            load_best_model_at_end=False
+            load_best_model_at_end=False,
+            ddp_find_unused_parameters=False if ft_config.ddp else None,
         ),
         data_collator=transformers.DataCollatorForLanguageModeling(tokenizer, mlm=False),
     )
