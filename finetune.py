@@ -127,10 +127,10 @@ if not ft_config.skip:
 
     print('Train completed.')
 
-if not ft_config.checkpoint:
-    # Save Model
-    model.save_pretrained(ft_config.lora_out_dir)
-else:
-    raise NotImplemented("TODO: Merge model + LoRA and save the whole checkpoint")
+# Save Model
+model.save_pretrained(ft_config.lora_out_dir)
 
+if ft_config.checkpoint:
+    print("Warning: Merge model + LoRA and save the whole checkpoint not implemented yet.")
+    
 print('Model Saved.')

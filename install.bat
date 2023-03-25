@@ -15,8 +15,9 @@ REM replace ./repository/GPTQ-for-LLaMa/quant_cuda.cpp and quant_cuda_kernel.cu 
 copy .\GPTQ-for-LLaMa\quant_cuda.cpp .\repository\GPTQ-for-LLaMa\quant_cuda.cpp /Y
 copy .\GPTQ-for-LLaMa\quant_cuda_kernel.cu .\repository\GPTQ-for-LLaMa\quant_cuda_kernel.cu /Y
 
-REM copy autograd_4bit.py into ./repository/GPTQ-for-LLaMa/autograd_4bit.py
+REM copy files into ./repository/GPTQ-for-LLaMa/
 copy .\GPTQ-for-LLaMa\autograd_4bit.py .\repository\GPTQ-for-LLaMa\autograd_4bit.py /Y
+copy .\GPTQ-for-LLaMa\gradient_checkpointing.py .\repository\GPTQ-for-LLaMa\gradient_checkpointing.py /Y
 
 REM install quant_cuda
 cd .\repository\GPTQ-for-LLaMa
