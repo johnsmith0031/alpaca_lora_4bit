@@ -92,6 +92,11 @@ if not ft_config.skip:
         from gradient_checkpointing import apply_gradient_checkpointing
         apply_gradient_checkpointing(model, checkpoint_ratio=ft_config.gradient_checkpointing_ratio)
 
+    # Disable Trainer's DataParallel for multigpu
+    if torch.cuda.device_count() > 1:
+        model.is_parallelizable = True
+        model.model_parallel = True
+
     trainer = transformers.Trainer(
         model=model,
         train_dataset=data.train_data,

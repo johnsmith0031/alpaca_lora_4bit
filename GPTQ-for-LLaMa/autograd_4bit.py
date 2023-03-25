@@ -15,6 +15,8 @@ auto_switch_thd = 16
 def get_buffer(shape_of_qweight, dtype=torch.float16, device='cuda'):
     if shape_of_qweight not in buffer_mat_dic.keys():
         buffer_mat_dic[shape_of_qweight] = torch.zeros((shape_of_qweight[0] * 8, shape_of_qweight[1]), dtype=dtype, device=device)
+    elif buffer_mat_dic[shape_of_qweight].device != device:
+        buffer_mat_dic[shape_of_qweight] = buffer_mat_dic[shape_of_qweight].to(device)
     return buffer_mat_dic[shape_of_qweight]
     
 
@@ -217,8 +219,13 @@ def load_llama_model_4bit_low_ram(config_path, model_path, half=False):
             if name in layers:
                 del layers[name]
         make_quant_for_4bit_autograd(model, layers)
-    model = accelerate.load_checkpoint_and_dispatch(model=model, checkpoint=model_path, device_map='auto')
-    model.cuda()
+    model = accelerate.load_checkpoint_and_dispatch(
+        model=model,
+        checkpoint=model_path,
+        device_map='auto',
+        no_split_module_classes=["LlamaDecoderLayer"]
+    )
+
     model.seqlen = 2048
     
     if half:
