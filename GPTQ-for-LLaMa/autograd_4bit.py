@@ -197,7 +197,7 @@ def model_to_float(model):
     print('Converted as Float.')
 
 
-def load_llama_model_4bit_low_ram(config_path, model_path, half=False):
+def load_llama_model_4bit_low_ram(config_path, model_path, half=False, device_map="auto"):
     import transformers
     import accelerate
     from transformers import LlamaConfig, LlamaForCausalLM, LlamaTokenizer
@@ -222,7 +222,7 @@ def load_llama_model_4bit_low_ram(config_path, model_path, half=False):
     model = accelerate.load_checkpoint_and_dispatch(
         model=model,
         checkpoint=model_path,
-        device_map='auto',
+        device_map=device_map,
         no_split_module_classes=["LlamaDecoderLayer"]
     )
 

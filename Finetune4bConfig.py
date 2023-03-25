@@ -1,3 +1,4 @@
+import os
 class Finetune4bConfig:
     """Config holder for LLaMA 4bit finetuning
     """
@@ -64,6 +65,12 @@ class Finetune4bConfig:
         self.logging_steps = logging_steps
         self.checkpoint = checkpoint
         self.skip = skip
+        self.world_size = int(os.environ.get("WORLD_SIZE", 1))
+        self.local_rank = int(os.environ.get("LOCAL_RANK", 0))
+        self.ddp = self.world_size != 1
+        self.device_map = "auto" if not self.ddp else {"": self.local_rank}
+        if self.ddp:
+            self.gradient_accumulation_steps = self.gradient_accumulation_steps // self.world_size
 
 
     def __str__(self) -> str:
@@ -74,5 +81,6 @@ class Finetune4bConfig:
         f"{self.gradient_checkpointing=}\n{self.gradient_checkpointing_ratio=}\n" +\
         f"{self.warmup_steps=}\n{self.save_steps=}\n{self.save_total_limit=}\n" +\
         f"{self.logging_steps=}\n" +\
-        f"{self.checkpoint=}\n{self.skip=}"
+        f"{self.checkpoint=}\n{self.skip=}\n" +\
+        f"{self.world_size=}\n{self.ddp=}\n{self.device_map=}"
         return s.replace("self.", "")
