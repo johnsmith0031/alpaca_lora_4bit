@@ -1,7 +1,3 @@
-import sys
-sys.path.insert(0, '../repository/transformers/src')
-sys.path.insert(0, '../repository/GPTQ-for-LLaMa')
-sys.path.insert(0, '../repository/peft/src')
 import time
 import torch
 import autograd_4bit
