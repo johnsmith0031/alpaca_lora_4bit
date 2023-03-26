@@ -1,4 +1,4 @@
-import quant
+from gptq_llama import quant
 import torch
 import numpy as np
 import torch.nn as nn
@@ -201,7 +201,7 @@ def load_llama_model_4bit_low_ram(config_path, model_path, half=False, device_ma
     import transformers
     import accelerate
     from transformers import LlamaConfig, LlamaForCausalLM, LlamaTokenizer
-    from modelutils import find_layers
+    from gptq_llama.modelutils import find_layers
     
     print("Loading Model ...")
     t0 = time.time()

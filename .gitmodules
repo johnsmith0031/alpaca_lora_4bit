@@ -4,3 +4,4 @@
 [submodule "repos/GPTQ-for-LLaMa"]
 	path = repos/GPTQ-for-LLaMa
 	url = https://github.com/sterlind/GPTQ-for-LLaMa.git
+	branch = lora_4bit
