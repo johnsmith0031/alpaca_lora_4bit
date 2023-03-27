@@ -1,8 +1,5 @@
 import os
 import sys
-sys.path.insert(0, './repository/transformers/src')
-sys.path.insert(0, './repository/GPTQ-for-LLaMa')
-sys.path.insert(0, './repository/peft/src')
 import time
 import torch
 from autograd_4bit import load_llama_model_4bit_low_ram

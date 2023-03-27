@@ -1,7 +1,7 @@
 # Alpaca Lora 4bit
 Made some adjust for the code in peft and gptq for llama, and make it possible for lora finetuning with a 4 bits base model. The same adjustment can be made for 2, 3 and 8 bits.
 <br>
-* Install Manual by s4rduk4r: https://github.com/s4rduk4r/alpaca_lora_4bit_readme/blob/main/README.md
+* Install Manual by s4rduk4r: https://github.com/s4rduk4r/alpaca_lora_4bit_readme/blob/main/README.md (**NOTE:** don't use the install script, use the requirements.txt instead.)
 
 # Update Logs
 * Resolved numerically unstable issue
@@ -28,16 +28,10 @@ peft: https://github.com/huggingface/peft.git<br>
 ~copy files from GPTQ-for-LLaMa into GPTQ-for-LLaMa path and re-compile cuda extension~<br>
 ~copy files from peft/tuners/lora.py to peft path, replace it~<br>
 
-Linux:
+**NOTE:** Install scripts are no longer needed! requirements.txt now pulls from forks with the necessary patches.
 
 ```
-./install.sh
-```
-
-Windows:
-
-```
-./install.bat
+pip install -r requirements.txt
 ```
 
 # Finetune
