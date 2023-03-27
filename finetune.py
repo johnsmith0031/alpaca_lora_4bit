@@ -1,7 +1,7 @@
 """
     llama-4b trainer with support of Stanford Alpaca-like JSON datasets (short for SAD)
     Intended to use with https://github.com/johnsmith0031/alpaca_lora_4bit
-    
+
     SAD structure:
     [
         {
@@ -72,15 +72,14 @@ tokenizer.pad_token_id = 0
 if not ft_config.skip:
     # Load Data
     data = None
-    match ft_config.ds_type:
-        case "txt" if not ft_config.skip:
-            #### LLaMA
-            data = train_data.TrainTxt(ft_config.dataset, ft_config.val_set_size, tokenizer, ft_config.cutoff_len)
-        case "alpaca" if not ft_config.skip:
-            #### Stanford Alpaca-like Data
-            data = train_data.TrainSAD(ft_config.dataset, ft_config.val_set_size, tokenizer, ft_config.cutoff_len)
-        case _:
-            raise NotImplementedError("ERROR: Unknown dataset format")
+    if ft_config.ds_type == "txt" and not ft_config.skip:
+        #### LLaMa
+        data = train_data.TrainTxt(ft_config.dataset, ft_config.val_set_size, tokenizer, ft_config.cutoff_len)
+    elif ft_config.ds_type == "alpaca" and not ft_config.skip:
+        #### Stanford Alpaca-like Data
+        data = train_data.TrainSAD(ft_config.dataset, ft_config.val_set_size, tokenizer, ft_config.cutoff_len)
+    else:
+        raise NotImplementedError("ERROR: Unknown dataset format")
     data.prepare_data()
     ####
 
@@ -136,5 +135,5 @@ model.save_pretrained(ft_config.lora_out_dir)
 
 if ft_config.checkpoint:
     print("Warning: Merge model + LoRA and save the whole checkpoint not implemented yet.")
-    
+
 print('Model Saved.')
