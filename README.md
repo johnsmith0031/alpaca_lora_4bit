@@ -23,6 +23,9 @@ Made some adjust for the code in peft and gptq for llama, and make it possible f
 * Added install manual by s4rduk4r
 <br>
 
+* Added pip install support by sterlind, preparing to merge changes upstream
+<br>
+
 # Requirements
 gptq-for-llama: https://github.com/qwopqwop200/GPTQ-for-LLaMa<br>
 peft: https://github.com/huggingface/peft.git<br>
