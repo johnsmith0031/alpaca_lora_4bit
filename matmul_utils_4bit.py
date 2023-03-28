@@ -45,7 +45,7 @@ def _matmul4bit_v1(x, qweight, scales, zeros):
     return y.reshape(outshape)
 
 
-def _matmul4bit_v2(x, qweight, scales, zeros, group_size):
+def _matmul4bit_v2(x, qweight, scales, zeros, groupsize):
     """
     input x: (n, m)
     qweight: (j, k)
@@ -63,7 +63,7 @@ def _matmul4bit_v2(x, qweight, scales, zeros, group_size):
     y = torch.zeros((x.shape[0], qweight.shape[-1]), dtype=torch.float32, device=x.device)
     dtype = x.dtype
     x = x.half()
-    quant_cuda.vecquant4matmul_faster(x, qweight, y, scales, zeros, group_size, x.shape[-1] // 2)
+    quant_cuda.vecquant4matmul_faster(x, qweight, y, scales, zeros, groupsize, x.shape[-1] // 2)
     y = y.to(dtype)
     return y.reshape(outshape)
 
@@ -84,7 +84,7 @@ def _matmul4bit_v1_recons(x, qweight, scales, zeros, transpose=False):
     return output
 
 
-def _matmul4bit_v2_recons(x, qweight, scales, zeros, group_size, transpose=False):
+def _matmul4bit_v2_recons(x, qweight, scales, zeros, groupsize, transpose=False):
     if debug:
         print('_matmul4bit_v2_recons')
     if not transpose:
@@ -92,7 +92,7 @@ def _matmul4bit_v2_recons(x, qweight, scales, zeros, group_size, transpose=False
     else:
         assert qweight.shape[1] == x.shape[-1]
     buffer = get_buffer(qweight.shape, dtype=scales.dtype, device=qweight.device)
-    quant_cuda.vecquant4recons_v2(qweight, buffer, scales, zeros, group_size)
+    quant_cuda.vecquant4recons_v2(qweight, buffer, scales, zeros, groupsize)
     if not transpose:
         output = torch.matmul(x, buffer)
     if transpose:
@@ -100,8 +100,8 @@ def _matmul4bit_v2_recons(x, qweight, scales, zeros, group_size, transpose=False
     return output
 
 
-def matmul4bit(x, qweight, scales, zeros, group_size=-1):
-    if group_size == -1:
+def matmul4bit(x, qweight, scales, zeros, groupsize=-1):
+    if groupsize == -1:
         # use v1
         if use_new:
             if auto_switch:
@@ -116,11 +116,11 @@ def matmul4bit(x, qweight, scales, zeros, group_size=-1):
         if use_new:
             if auto_switch:
                 if np.prod(x.shape[:-1]) > auto_switch_thd:
-                    output = _matmul4bit_v2_recons(x, qweight, scales, zeros, group_size)
+                    output = _matmul4bit_v2_recons(x, qweight, scales, zeros, groupsize)
                 else:
-                    output = _matmul4bit_v2(x, qweight, scales, zeros, group_size)
+                    output = _matmul4bit_v2(x, qweight, scales, zeros, groupsize)
         else:
-            output = _matmul4bit_v2(x, qweight, scales, zeros, group_size)
+            output = _matmul4bit_v2(x, qweight, scales, zeros, groupsize)
     return output
 
 
