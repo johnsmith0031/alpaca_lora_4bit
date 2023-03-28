@@ -14,7 +14,7 @@ def load_model_llama(*args, **kwargs):
     print("Loading {} ...".format(model_path))
     t0 = time.time()
     
-    model, tokenizer = load_llama_model_4bit_low_ram(config_path, model_path)
+    model, tokenizer = load_llama_model_4bit_low_ram(config_path, model_path, groupsize=-1)
     
     model = PeftModel.from_pretrained(model, lora_path, device_map={'': 0}, torch_dtype=torch.float32)
     print('{} Lora Applied.'.format(lora_path))
@@ -22,7 +22,8 @@ def load_model_llama(*args, **kwargs):
     print('Apply auto switch and half')
     for n, m in model.named_modules():
         if isinstance(m, Autograd4bitQuantLinear) or isinstance(m, Linear4bitLt):
-            m.zeros = m.zeros.half()
+            if m.groupsize == -1:
+                m.zeros = m.zeros.half()
             m.scales = m.scales.half()
             m.bias = m.bias.half()
     autograd_4bit.use_new = True

@@ -2,16 +2,18 @@ import os
 import sys
 import time
 import torch
-from autograd_4bit import load_llama_model_4bit_low_ram
+from autograd_4bit import load_llama_model_4bit_low_ram, Autograd4bitQuantLinear
 config_path = './llama-13b-4bit/'
 model_path = './llama-13b-4bit.pt'
 model, tokenizer = load_llama_model_4bit_low_ram(config_path, model_path)
 
 print('Fitting 4bit scales and zeros to half')
 for n, m in model.named_modules():
-    if '4bit' in str(type(m)):
-        m.zeros = m.zeros.half()
+    if isinstance(m, Autograd4bitQuantLinear):
+        if m.groupsize == -1:
+            m.zeros = m.zeros.half()
         m.scales = m.scales.half()
+        m.bias = m.bias.half()
 
 prompt = '''I think the meaning of life is'''
 batch = tokenizer(prompt, return_tensors="pt", add_special_tokens=False)

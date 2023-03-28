@@ -13,7 +13,7 @@ class Finetune4bConfig:
                  gradient_checkpointing: bool,
                  gradient_checkpointing_ratio: float,
                  warmup_steps: int, save_steps: int, save_total_limit: int, logging_steps: int,
-                 checkpoint: bool, skip: bool
+                 checkpoint: bool, skip: bool, groupsize: int
                  ):
         """
         Args:
@@ -40,6 +40,7 @@ class Finetune4bConfig:
             logging_steps (int): Logging steps
             checkpoint (bool): Produce checkpoint instead of LoRA
             skip (bool): Don't train model
+            groupsize (int): Group size of V2 model, use -1 to load V1 model
         """
         self.dataset = dataset
         self.ds_type = ds_type
@@ -71,6 +72,7 @@ class Finetune4bConfig:
         self.device_map = "auto" if not self.ddp else {"": self.local_rank}
         if self.ddp:
             self.gradient_accumulation_steps = self.gradient_accumulation_steps // self.world_size
+        self.groupsize = groupsize
 
 
     def __str__(self) -> str:

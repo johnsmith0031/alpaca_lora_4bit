@@ -42,7 +42,10 @@ if ft_config.gradient_checkpointing:
     print('Disable Dropout.')
 
 # Load Basic Model
-model, tokenizer = load_llama_model_4bit_low_ram(ft_config.llama_q4_config_dir, ft_config.llama_q4_model, device_map=ft_config.device_map)
+model, tokenizer = load_llama_model_4bit_low_ram(ft_config.llama_q4_config_dir,
+                                                  ft_config.llama_q4_model,
+                                                  device_map=ft_config.device_map,
+                                                  groupsize=ft_config.groupsize)
 
 # Config Lora
 lora_config = LoraConfig(

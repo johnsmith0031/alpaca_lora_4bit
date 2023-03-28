@@ -53,6 +53,9 @@ def parse_commandline():
     parser_training.add_argument("-c", "--checkpoint", action="store_true", help="Produce checkpoint instead of LoRA. Default: %(default)s")
     parser_training.add_argument("--skip", action="store_true", help="Don't train model. Can be useful to produce checkpoint from existing LoRA. Default: %(default)s")
 
+    # V2 model support
+    parser_training.add_argument("--groupsize", type=int, default=-1, help="Groupsize of v2 model, use -1 to load v1 model")
+
     return vars(parser.parse_args())
 
 
@@ -81,5 +84,6 @@ def get_config() -> Finetune4bConfig:
         save_total_limit=args["save_total_limit"],
         logging_steps=args["logging_steps"],
         checkpoint=args["checkpoint"],
-        skip=args["skip"]
+        skip=args["skip"],
+        groupsize=args["groupsize"]
     )
