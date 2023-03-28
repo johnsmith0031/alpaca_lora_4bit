@@ -3,6 +3,7 @@ accelerate
 bitsandbytes
 datasets
 sentencepiece
+safetensors
 git+https://github.com/huggingface/transformers.git
 git+https://github.com/sterlind/GPTQ-for-LLaMa.git@lora_4bit
 git+https://github.com/sterlind/peft.git

@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-import quant_cuda
+from gptq_llama import quant_cuda
 
 
 # Global Buffer
