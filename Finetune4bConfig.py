@@ -13,7 +13,7 @@ class Finetune4bConfig:
                  gradient_checkpointing: bool,
                  gradient_checkpointing_ratio: float,
                  warmup_steps: int, save_steps: int, save_total_limit: int, logging_steps: int,
-                 checkpoint: bool, skip: bool, groupsize: int
+                 checkpoint: bool, skip: bool, txt_row_thd: int, groupsize: int
                  ):
         """
         Args:
@@ -40,6 +40,7 @@ class Finetune4bConfig:
             logging_steps (int): Logging steps
             checkpoint (bool): Produce checkpoint instead of LoRA
             skip (bool): Don't train model
+            txt_row_thd (int): Custom row thd for txt file
             groupsize (int): Group size of V2 model, use -1 to load V1 model
         """
         self.dataset = dataset
@@ -66,6 +67,7 @@ class Finetune4bConfig:
         self.logging_steps = logging_steps
         self.checkpoint = checkpoint
         self.skip = skip
+        self.txt_row_thd = txt_row_thd
         self.world_size = int(os.environ.get("WORLD_SIZE", 1))
         self.local_rank = int(os.environ.get("LOCAL_RANK", 0))
         self.ddp = self.world_size != 1

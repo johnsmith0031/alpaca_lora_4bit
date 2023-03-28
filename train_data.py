@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 from datasets import load_dataset, Dataset
+import os
 
 
 # Abstract train data loader
@@ -66,11 +67,38 @@ class TrainTxt(ATrainData):
             self.exceed_count += 1
         return d
 
-    def prepare_data(self):
-        with open(self.dataset, 'r', encoding='utf8') as file:
-            txt = file.read()
-        txt = txt.replace('\r\n', '\n')
-        rows = [r for r in txt.split('\n') if r != '']
+    @classmethod
+    def format_new_rows(cls, rows, thd=128):
+        r_b = ''
+        new_rows = []
+        for row in rows:
+            if len(r_b) == 0:
+                r_b += row
+            else:
+                r_b += '\n' + row
+            if len(r_b) > thd:
+                new_rows.append(r_b)
+                r_b = ''
+        if len(r_b) > thd:
+            new_rows.append(r_b)
+            r_b = ''
+        return new_rows
+
+    def prepare_data(self, thd=-1):
+        if os.path.isdir(self.dataset):
+            rows = []
+            for filename in os.listdir(self.dataset):
+                with open(self.dataset + filename, 'r', encoding='utf8') as file:
+                    txt = file.read()
+                txt = txt.replace('\r\n', '\n').replace('\u3000', ' ')
+                rows += [r for r in txt.split('\n') if r != '']
+        else:
+            with open(self.dataset, 'r', encoding='utf8') as file:
+                txt = file.read()
+            txt = txt.replace('\r\n', '\n')
+            rows = [r for r in txt.split('\n') if r != '']
+        if thd != -1:
+            rows = self.format_new_rows(rows, thd=thd)
         data = Dataset.from_dict({"input": rows})
         data = data.shuffle().map(lambda x: self.tokenize(x))
         print('Train Data: {:.2f}%'.format(self.exceed_count / len(data) * 100), 'outliers')

@@ -62,6 +62,7 @@ else:
     model = PeftModel.from_pretrained(model, ft_config.lora_apply_dir, device_map={'': 0}, torch_dtype=torch.float32)  # ! Direct copy from inference.py
     print(ft_config.lora_apply_dir, 'loaded')
 
+
 # Scales to half
 print('Fitting 4bit scales and zeros to half')
 for n, m in model.named_modules():
@@ -84,7 +85,7 @@ if not ft_config.skip:
         data = train_data.TrainSAD(ft_config.dataset, ft_config.val_set_size, tokenizer, ft_config.cutoff_len)
     else:
         raise NotImplementedError("ERROR: Unknown dataset format")
-    data.prepare_data()
+    data.prepare_data(thd=ft_config.txt_row_thd)
     ####
 
     # Use gradient checkpointing

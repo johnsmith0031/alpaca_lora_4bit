@@ -52,6 +52,7 @@ def parse_commandline():
     parser_training.add_argument("--logging_steps", default=10, type=int, help="Default: %(default)s")
     parser_training.add_argument("-c", "--checkpoint", action="store_true", help="Produce checkpoint instead of LoRA. Default: %(default)s")
     parser_training.add_argument("--skip", action="store_true", help="Don't train model. Can be useful to produce checkpoint from existing LoRA. Default: %(default)s")
+    parser_training.add_argument("--txt_row_thd", default=-1, type=int, help="Custom thd for txt rows.")
 
     # V2 model support
     parser_training.add_argument("--groupsize", type=int, default=-1, help="Groupsize of v2 model, use -1 to load v1 model")
@@ -85,5 +86,6 @@ def get_config() -> Finetune4bConfig:
         logging_steps=args["logging_steps"],
         checkpoint=args["checkpoint"],
         skip=args["skip"],
+        txt_row_thd=args["txt_row_thd"],
         groupsize=args["groupsize"]
     )
