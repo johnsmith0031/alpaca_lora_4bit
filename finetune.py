@@ -130,8 +130,16 @@ if not ft_config.skip:
         lambda self, *_, **__: get_peft_model_state_dict(self, old_state_dict())
     ).__get__(model, type(model))
 
+    # Set Verbose
+    if ft_config.verbose:
+        transformers.logging.set_verbosity_info()
+
     # Run Trainer
-    trainer.train()
+    if ft_config.resume_checkpoint:
+        print('Resuming from {} ...'.format(ft_config.resume_checkpoint))
+        trainer.train(ft_config.resume_checkpoint)
+    else:
+        trainer.train()
 
     print('Train completed.')
 

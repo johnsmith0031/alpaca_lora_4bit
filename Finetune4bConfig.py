@@ -3,7 +3,7 @@ class Finetune4bConfig:
     """Config holder for LLaMA 4bit finetuning
     """
     def __init__(self, dataset: str, ds_type: str, 
-                 lora_out_dir: str, lora_apply_dir : str,
+                 lora_out_dir: str, lora_apply_dir: str, resume_checkpoint: str,
                  llama_q4_config_dir: str, llama_q4_model: str,
                  mbatch_size: int, batch_size: int,
                  epochs: int, lr: float, 
@@ -13,7 +13,8 @@ class Finetune4bConfig:
                  gradient_checkpointing: bool,
                  gradient_checkpointing_ratio: float,
                  warmup_steps: int, save_steps: int, save_total_limit: int, logging_steps: int,
-                 checkpoint: bool, skip: bool, txt_row_thd: int, use_eos_token: bool, groupsize: int
+                 checkpoint: bool, skip: bool, verbose: bool,
+                 txt_row_thd: int, use_eos_token: bool, groupsize: int
                  ):
         """
         Args:
@@ -21,6 +22,7 @@ class Finetune4bConfig:
             ds_type (str): Dataset structure format
             lora_out_dir (str): Directory to place new LoRA
             lora_apply_dir (str): Path to directory from which LoRA has to be applied before training
+            resume_checkpoint (str): Path to Specified checkpoint you want to resume.
             llama_q4_config_dir (str): Path to the config.json, tokenizer_config.json, etc
             llama_q4_model (str): Path to the quantized model in huggingface format
             mbatch_size (int): Micro-batch size
@@ -40,6 +42,7 @@ class Finetune4bConfig:
             logging_steps (int): Logging steps
             checkpoint (bool): Produce checkpoint instead of LoRA
             skip (bool): Don't train model
+            verbose (bool): If output log of training
             txt_row_thd (int): Custom row thd for txt file
             use_eos_token (bool): Use Eos token instead of padding with 0
             groupsize (int): Group size of V2 model, use -1 to load V1 model
@@ -48,6 +51,7 @@ class Finetune4bConfig:
         self.ds_type = ds_type
         self.lora_out_dir = lora_out_dir
         self.lora_apply_dir = lora_apply_dir
+        self.resume_checkpoint = resume_checkpoint
         self.llama_q4_config_dir = llama_q4_config_dir
         self.llama_q4_model = llama_q4_model
         self.mbatch_size = mbatch_size
@@ -68,6 +72,7 @@ class Finetune4bConfig:
         self.logging_steps = logging_steps
         self.checkpoint = checkpoint
         self.skip = skip
+        self.verbose = verbose
         self.txt_row_thd = txt_row_thd
         self.use_eos_token = use_eos_token
         self.world_size = int(os.environ.get("WORLD_SIZE", 1))
