@@ -11,7 +11,8 @@ Made some adjust for the code in peft and gptq for llama, and make it possible f
 * Added Gradient Checkpointing. Now It can finetune 30b model 4bit on a single GPU with 24G VRAM with Gradient Checkpointing enabled. (finetune.py updated) (but would reduce training speed, so if having enough VRAM this option is not needed)
 * Added install manual by s4rduk4r
 * Added pip install support by sterlind, preparing to merge changes upstream
-* Add V2 model support (with groupsize, both inference + finetune)
+* Added V2 model support (with groupsize, both inference + finetune)
+* Added some options on finetune: set default to use eos_token instead of padding, add resume_checkpoint to continue training
 
 # Requirements
 gptq-for-llama: https://github.com/qwopqwop200/GPTQ-for-LLaMa<br>
