@@ -114,15 +114,18 @@ class TrainSAD(ATrainData):
         # there's probably a way to do this with the tokenizer settings
         # but again, gotta move fast
         result = self.tokenizer(
-            prompt,
+            prompt + self.tokenizer.eos_token,
             truncation=True,
-            max_length=self.cutoff_len + 1,
-            padding="max_length",
+            max_length=self.cutoff_len,
+            padding=False,
         )
-        return {
-            "input_ids": result["input_ids"][:-1],
-            "attention_mask": result["attention_mask"][:-1],
-        }
+        if (
+             result["input_ids"][-1] != self.tokenizer.eos_token_id
+             and len(result["input_ids"]) < self.cutoff_len
+         ):
+             result["input_ids"].append(tokenizer.eos_token_id)
+             result["attention_mask"].append(1)
+        return result
 
     def prepare_data(self, **kwargs) -> None:
         data = load_dataset("json", data_files=self.dataset)
