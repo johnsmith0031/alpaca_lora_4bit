@@ -85,7 +85,7 @@ if not ft_config.skip:
         data = train_data.TrainSAD(ft_config.dataset, ft_config.val_set_size, tokenizer, ft_config.cutoff_len)
     else:
         raise NotImplementedError("ERROR: Unknown dataset format")
-    data.prepare_data(thd=ft_config.txt_row_thd)
+    data.prepare_data(thd=ft_config.txt_row_thd, use_eos_token=ft_config.use_eos_token)
     ####
 
     # Use gradient checkpointing

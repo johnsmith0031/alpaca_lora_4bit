@@ -52,8 +52,11 @@ def parse_commandline():
     parser_training.add_argument("--logging_steps", default=10, type=int, help="Default: %(default)s")
     parser_training.add_argument("-c", "--checkpoint", action="store_true", help="Produce checkpoint instead of LoRA. Default: %(default)s")
     parser_training.add_argument("--skip", action="store_true", help="Don't train model. Can be useful to produce checkpoint from existing LoRA. Default: %(default)s")
-    parser_training.add_argument("--txt_row_thd", default=-1, type=int, help="Custom thd for txt rows.")
 
+    # Data args
+    parser_training.add_argument("--txt_row_thd", default=-1, type=int, help="Custom thd for txt rows.")
+    parser_training.add_argument("--use_eos_token", default=1, type=int, help="Use eos token instead if padding with 0. enable with 1, disable with 0.")
+    
     # V2 model support
     parser_training.add_argument("--groupsize", type=int, default=-1, help="Groupsize of v2 model, use -1 to load v1 model")
 
@@ -87,5 +90,6 @@ def get_config() -> Finetune4bConfig:
         checkpoint=args["checkpoint"],
         skip=args["skip"],
         txt_row_thd=args["txt_row_thd"],
+        use_eos_token=args["use_eos_token"]!=0,
         groupsize=args["groupsize"]
     )
