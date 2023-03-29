@@ -59,7 +59,7 @@ lora_config = LoraConfig(
 if ft_config.lora_apply_dir is None:
     model = get_peft_model(model, lora_config)
 else:
-    model = PeftModel.from_pretrained(model, ft_config.lora_apply_dir, device_map={'': 0}, torch_dtype=torch.float32)  # ! Direct copy from inference.py
+    model = PeftModel.from_pretrained(model, ft_config.lora_apply_dir, device_map=ft_config.device_map, torch_dtype=torch.float32)  # ! Direct copy from inference.py
     print(ft_config.lora_apply_dir, 'loaded')
 
 
@@ -83,6 +83,9 @@ if not ft_config.skip:
     elif ft_config.ds_type == "alpaca" and not ft_config.skip:
         #### Stanford Alpaca-like Data
         data = train_data.TrainSAD(ft_config.dataset, ft_config.val_set_size, tokenizer, ft_config.cutoff_len)
+    elif ft_config.ds_type == "gpt4all" and not ft_config.skip:
+        #### GPT4All Data
+        data = train_data.TrainGPT4All(ft_config.dataset, ft_config.val_set_size, tokenizer, ft_config.cutoff_len)
     else:
         raise NotImplementedError("ERROR: Unknown dataset format")
     data.prepare_data(thd=ft_config.txt_row_thd, use_eos_token=ft_config.use_eos_token)
