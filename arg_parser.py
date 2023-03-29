@@ -18,7 +18,7 @@ def parse_commandline():
     parser_training = parser.add_argument_group("training")
 
     # Config args group
-    parser_config.add_argument("--ds_type", choices=["txt", "alpaca"], default="alpaca", required=False,
+    parser_config.add_argument("--ds_type", choices=["txt", "alpaca", "gpt4all"], default="alpaca", required=False,
         help="Dataset structure format. Default: %(default)s"
     )
     parser_config.add_argument("--lora_out_dir", default="alpaca_lora", required=False,
@@ -64,6 +64,8 @@ def parse_commandline():
     # V2 model support
     parser_training.add_argument("--groupsize", type=int, default=-1, help="Groupsize of v2 model, use -1 to load v1 model")
 
+    parser_training.add_argument("--local_rank", type=int, default=0, help="local rank if using torch.distributed.launch")
+
     return vars(parser.parse_args())
 
 
@@ -97,5 +99,6 @@ def get_config() -> Finetune4bConfig:
         verbose=args["verbose"],
         txt_row_thd=args["txt_row_thd"],
         use_eos_token=args["use_eos_token"]!=0,
-        groupsize=args["groupsize"]
+        groupsize=args["groupsize"],
+        local_rank=args["local_rank"],
     )

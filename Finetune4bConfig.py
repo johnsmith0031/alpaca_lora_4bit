@@ -2,11 +2,11 @@ import os
 class Finetune4bConfig:
     """Config holder for LLaMA 4bit finetuning
     """
-    def __init__(self, dataset: str, ds_type: str, 
+    def __init__(self, dataset: str, ds_type: str,
                  lora_out_dir: str, lora_apply_dir: str, resume_checkpoint: str,
                  llama_q4_config_dir: str, llama_q4_model: str,
                  mbatch_size: int, batch_size: int,
-                 epochs: int, lr: float, 
+                 epochs: int, lr: float,
                  cutoff_len: int,
                  lora_r: int, lora_alpha: int, lora_dropout: float,
                  val_set_size: float,
@@ -14,7 +14,8 @@ class Finetune4bConfig:
                  gradient_checkpointing_ratio: float,
                  warmup_steps: int, save_steps: int, save_total_limit: int, logging_steps: int,
                  checkpoint: bool, skip: bool, verbose: bool,
-                 txt_row_thd: int, use_eos_token: bool, groupsize: int
+                 txt_row_thd: int, use_eos_token: bool, groupsize: int,
+                 local_rank: int,
                  ):
         """
         Args:
@@ -46,6 +47,7 @@ class Finetune4bConfig:
             txt_row_thd (int): Custom row thd for txt file
             use_eos_token (bool): Use Eos token instead of padding with 0
             groupsize (int): Group size of V2 model, use -1 to load V1 model
+            local_rank (int): local rank if using torch.distributed.launch
         """
         self.dataset = dataset
         self.ds_type = ds_type
@@ -76,7 +78,7 @@ class Finetune4bConfig:
         self.txt_row_thd = txt_row_thd
         self.use_eos_token = use_eos_token
         self.world_size = int(os.environ.get("WORLD_SIZE", 1))
-        self.local_rank = int(os.environ.get("LOCAL_RANK", 0))
+        self.local_rank = int(os.environ.get("LOCAL_RANK", local_rank))
         self.ddp = self.world_size != 1
         self.device_map = "auto" if not self.ddp else {"": self.local_rank}
         if self.ddp:
