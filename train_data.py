@@ -197,3 +197,5 @@ class TrainGPT4All(TrainSAD):
             "",
             "### Response:",
             data_point["response"]
+        )
+
