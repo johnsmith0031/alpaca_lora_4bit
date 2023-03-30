@@ -13,6 +13,7 @@ Made some adjust for the code in peft and gptq for llama, and make it possible f
 * Added pip install support by sterlind, preparing to merge changes upstream
 * Added V2 model support (with groupsize, both inference + finetune)
 * Added some options on finetune: set default to use eos_token instead of padding, add resume_checkpoint to continue training
+* Added offload support. load_llama_model_4bit_low_ram_and_offload_to_cpu function can be used.
 
 # Requirements
 gptq-for-llama: https://github.com/qwopqwop200/GPTQ-for-LLaMa<br>
