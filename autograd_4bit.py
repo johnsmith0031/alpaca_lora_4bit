@@ -30,7 +30,7 @@ class AutogradMatmul4bit(torch.autograd.Function):
 
 
 # Assumes layer is perfectly divisible into 256 * 256 blocks
-class Autograd4bitQuantLinear(nn.Module): 
+class Autograd4bitQuantLinear(nn.Module):
 
     def __init__(self, infeatures, outfeatures, groupsize=-1):
         super().__init__()
@@ -47,7 +47,7 @@ class Autograd4bitQuantLinear(nn.Module):
                                   torch.empty((math.ceil(infeatures/groupsize), outfeatures // 256 * (bits * 8)), dtype=torch.int)
                                 )
             self.register_buffer('scales', torch.empty((math.ceil(infeatures/groupsize),outfeatures)))
-        self.register_buffer('bias', torch.empty(outfeatures))
+        self.bias = nn.Parameter(torch.empty(outfeatures))
         self.register_buffer(
             'qweight', torch.empty((infeatures // 256 * (bits * 8), outfeatures), dtype=torch.int)
         )
@@ -57,11 +57,11 @@ class Autograd4bitQuantLinear(nn.Module):
         if torch.is_grad_enabled():
             out = AutogradMatmul4bit.apply(x, self.qweight, self.scales,
                                            self.qzeros if self.groupsize != -1 else self.zeros, self.groupsize)
-            out += self.bias
+            out.add_(self.bias)
         else:
             out = mm4b.matmul4bit(x, self.qweight, self.scales,
                                   self.qzeros if self.groupsize != -1 else self.zeros, self.groupsize)
-            out += self.bias
+            out.add_(self.bias)
         return out
 
 
@@ -115,7 +115,7 @@ def find_layers(module, layers=[nn.Conv2d, nn.Linear], name=''):
 def load_llama_model_4bit_low_ram(config_path, model_path, groupsize=-1, half=False, device_map="auto", seqlen=2048):
     import accelerate
     from transformers import LlamaConfig, LlamaForCausalLM, LlamaTokenizer
-    
+
     print("Loading Model ...")
     t0 = time.time()
 
@@ -136,7 +136,7 @@ def load_llama_model_4bit_low_ram(config_path, model_path, groupsize=-1, half=Fa
     )
 
     model.seqlen = seqlen
-    
+
     if half:
         model_to_half(model)
 
@@ -144,9 +144,9 @@ def load_llama_model_4bit_low_ram(config_path, model_path, groupsize=-1, half=Fa
     tokenizer.truncation_side = 'left'
 
     print(f"Loaded the model in {(time.time()-t0):.2f} seconds.")
-    
+
     return model, tokenizer
-    
+
 def load_llama_model_4bit_low_ram_and_offload_to_cpu(config_path, model_path, lora_path=None, groupsize=-1, seqlen=2048, max_memory=None):
     import accelerate
     from transformers import LlamaConfig, LlamaForCausalLM, LlamaTokenizer
@@ -190,13 +190,13 @@ def load_llama_model_4bit_low_ram_and_offload_to_cpu(config_path, model_path, lo
                 m.zeros = m.zeros.half()
             m.scales = m.scales.half()
             m.bias = m.bias.half()
-    
+
     print('Dispatching model ...')
     device_map = accelerate.infer_auto_device_map(model, max_memory=max_memory, no_split_module_classes=["LlamaDecoderLayer"])
     model = accelerate.dispatch_model(model, device_map=device_map, offload_buffers=True, main_device=0)
     torch.cuda.empty_cache()
     print('Total {:.2f} Gib VRAM used.'.format(torch.cuda.memory_allocated() / 1024 / 1024))
-    
+
     # rotary_emb fix
     for n, m in model.named_modules():
         if 'rotary_emb' in n:
@@ -210,7 +210,7 @@ def load_llama_model_4bit_low_ram_and_offload_to_cpu(config_path, model_path, lo
                         if n + '.sin_cached' not in hook.weights_map.dataset.state_dict.keys():
                             hook.weights_map.dataset.state_dict[n + '.sin_cached'] = sin_cached.clone().cpu()
                             hook.weights_map.dataset.state_dict[n + '.cos_cached'] = cos_cached.clone().cpu()
-    
+
     tokenizer = LlamaTokenizer.from_pretrained(config_path)
     tokenizer.truncation_side = 'left'
 
