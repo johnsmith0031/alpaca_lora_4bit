@@ -59,7 +59,7 @@ lora_config = LoraConfig(
 if ft_config.lora_apply_dir is None:
     model = get_peft_model(model, lora_config)
 else:
-    model = PeftModel.from_pretrained(model, ft_config.lora_apply_dir, device_map=ft_config.device_map, torch_dtype=torch.float32)  # ! Direct copy from inference.py
+    model = PeftModel.from_pretrained(model, ft_config.lora_apply_dir, device_map={'': 0}, torch_dtype=torch.float32)  # ! Direct copy from inference.py
     print(ft_config.lora_apply_dir, 'loaded')
 
 
