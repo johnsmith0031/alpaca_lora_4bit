@@ -27,15 +27,15 @@ def _matmul4bit_v1(x, qweight, scales, zeros):
     input x: (n, m)
     qweight: (j, k)
     where m == j*8
-    
+
     perform x @ qweight
-    
-    return y: 
+
+    return y:
     """
     if debug:
         print('_matmul4bit_v1')
     assert qweight.shape[0] * 8 == x.shape[-1]
-    outshape = tuple(list(x.shape[:-1]) + [qweight.shape[1]])
+    outshape = x.shape[:-1] + (qweight.shape[1],)
     x = x.reshape(-1, x.shape[-1])
     y = torch.zeros((x.shape[0], qweight.shape[-1]), dtype=torch.float32, device=x.device)
     dtype = x.dtype
@@ -50,15 +50,15 @@ def _matmul4bit_v2(x, qweight, scales, zeros, groupsize):
     input x: (n, m)
     qweight: (j, k)
     where m == j*8
-    
+
     perform x @ qweight
-    
-    return y: 
+
+    return y:
     """
     if debug:
         print('_matmul4bit_v2')
     assert qweight.shape[0] * 8 == x.shape[-1]
-    outshape = tuple(list(x.shape[:-1]) + [qweight.shape[1]])
+    outshape = x.shape[:-1] + (qweight.shape[1],)
     x = x.reshape(-1, x.shape[-1])
     y = torch.zeros((x.shape[0], qweight.shape[-1]), dtype=torch.float32, device=x.device)
     dtype = x.dtype
@@ -95,7 +95,7 @@ def _matmul4bit_v2_recons(x, qweight, scales, zeros, groupsize, transpose=False)
     quant_cuda.vecquant4recons_v2(qweight, buffer, scales, zeros, groupsize)
     if not transpose:
         output = torch.matmul(x, buffer)
-    if transpose:
+    else:
         output = torch.matmul(x, buffer.T)
     return output
 

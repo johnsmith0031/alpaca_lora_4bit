@@ -102,27 +102,29 @@ if not ft_config.skip:
         model.is_parallelizable = True
         model.model_parallel = True
 
+    training_arguments = transformers.TrainingArguments(
+        per_device_train_batch_size=ft_config.mbatch_size,
+        gradient_accumulation_steps=ft_config.gradient_accumulation_steps,
+        warmup_steps=ft_config.warmup_steps,
+        num_train_epochs=ft_config.epochs,
+        learning_rate=ft_config.lr,
+        fp16=True,
+        logging_steps=ft_config.logging_steps,
+        evaluation_strategy="no",
+        save_strategy="steps",
+        eval_steps=None,
+        save_steps=ft_config.save_steps,
+        output_dir=ft_config.lora_out_dir,
+        save_total_limit=ft_config.save_total_limit,
+        load_best_model_at_end=False,
+        ddp_find_unused_parameters=False if ft_config.ddp else None,
+    )
+
     trainer = transformers.Trainer(
         model=model,
         train_dataset=data.train_data,
         eval_dataset=data.val_data,
-        args=transformers.TrainingArguments(
-            per_device_train_batch_size=ft_config.mbatch_size,
-            gradient_accumulation_steps=ft_config.gradient_accumulation_steps,
-            warmup_steps=ft_config.warmup_steps,
-            num_train_epochs=ft_config.epochs,
-            learning_rate=ft_config.lr,
-            fp16=True,
-            logging_steps=ft_config.logging_steps,
-            evaluation_strategy="no",
-            save_strategy="steps",
-            eval_steps=None,
-            save_steps=ft_config.save_steps,
-            output_dir=ft_config.lora_out_dir,
-            save_total_limit=ft_config.save_total_limit,
-            load_best_model_at_end=False,
-            ddp_find_unused_parameters=False if ft_config.ddp else None,
-        ),
+        args=training_arguments,
         data_collator=transformers.DataCollatorForLanguageModeling(tokenizer, mlm=False),
     )
     model.config.use_cache = False
