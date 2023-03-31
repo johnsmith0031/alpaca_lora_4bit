@@ -16,9 +16,9 @@ Made some adjust for the code in peft and gptq for llama, and make it possible f
 * Added offload support. load_llama_model_4bit_low_ram_and_offload_to_cpu function can be used.
 
 # Requirements
-gptq-for-llama: https://github.com/qwopqwop200/GPTQ-for-LLaMa<br>
-peft: https://github.com/huggingface/peft.git<br>
-<br>
+gptq-for-llama <br>
+peft<br>
+The specific version is inside requirements.txt<br>
 
 # Install
 ~copy files from GPTQ-for-LLaMa into GPTQ-for-LLaMa path and re-compile cuda extension~<br>
