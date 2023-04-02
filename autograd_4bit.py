@@ -46,7 +46,8 @@ class Autograd4bitQuantLinear(nn.Module):
             self.register_buffer('qzeros',
                                   torch.empty((math.ceil(infeatures/groupsize), outfeatures // 256 * (bits * 8)), dtype=torch.int)
                                 )
-            self.register_buffer('scales', torch.empty((math.ceil(infeatures/groupsize),outfeatures)))
+            self.register_buffer('scales', torch.empty((math.ceil(infeatures/groupsize), outfeatures)))
+            self.register_buffer('g_idx', torch.tensor([i // self.groupsize  for i in range(infeatures)], dtype = torch.int32))
         self.bias = nn.Parameter(torch.empty(outfeatures))
         self.register_buffer(
             'qweight', torch.empty((infeatures // 256 * (bits * 8), outfeatures), dtype=torch.int)

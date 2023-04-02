@@ -64,6 +64,7 @@ def parse_commandline():
     # V2 model support
     parser_training.add_argument("--groupsize", type=int, default=-1, help="Groupsize of v2 model, use -1 to load v1 model")
 
+    # Multi GPU Support
     parser_training.add_argument("--local_rank", type=int, default=0, help="local rank if using torch.distributed.launch")
 
     return vars(parser.parse_args())
