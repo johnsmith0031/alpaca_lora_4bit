@@ -34,9 +34,19 @@ pip install -r requirements.txt
 ~The same finetune script from https://github.com/tloen/alpaca-lora can be used.~<br>
 
 After installation, this script can be used:
+GPTQv1:
 
 ```
 python finetune.py
+```
+or
+```
+GPTQ_VERSION=1 python finetune.py
+```
+
+GPTQv2:
+```
+GPTQ_VERSION=2 python finetune.py
 ```
 
 # Inference

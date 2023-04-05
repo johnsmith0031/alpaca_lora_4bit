@@ -109,6 +109,7 @@ if not ft_config.skip:
         per_device_train_batch_size=ft_config.mbatch_size,
         gradient_accumulation_steps=ft_config.gradient_accumulation_steps,
         warmup_steps=ft_config.warmup_steps,
+        optim="adamw_torch",
         num_train_epochs=ft_config.epochs,
         learning_rate=ft_config.lr,
         fp16=True,

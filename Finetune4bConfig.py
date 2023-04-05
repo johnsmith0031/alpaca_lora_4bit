@@ -95,5 +95,6 @@ class Finetune4bConfig:
         f"{self.warmup_steps=}\n{self.save_steps=}\n{self.save_total_limit=}\n" +\
         f"{self.logging_steps=}\n" +\
         f"{self.checkpoint=}\n{self.skip=}\n" +\
-        f"{self.world_size=}\n{self.ddp=}\n{self.device_map=}"
+        f"{self.world_size=}\n{self.ddp=}\n{self.device_map=}\n" +\
+        f"{self.groupsize=}\n"
         return s.replace("self.", "")
