@@ -1,7 +1,7 @@
 # Run LLM chat in realtime on an 8GB NVIDIA GPU
 
 ## Dockerfile for alpaca_lora_4bit
-Based on https://github.com/johnsmith0031/alpaca_lora_4bit
+This repo is a Dockerfile wrapper for https://github.com/johnsmith0031/alpaca_lora_4bit
 
 ## Use
 Can run real-time LLM chat using alpaca on a 8GB NVIDIA/CUDA GPU (ie 3070 Ti mobile)
