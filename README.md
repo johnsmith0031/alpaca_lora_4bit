@@ -23,6 +23,8 @@ Point your browser to http://localhost:7860
 ## Results
 It's fast on a 3070 Ti mobile.  Uses 5-6 GB of GPU RAM.
 
+![](alpaca_lora_4bit_penguin_fact.gif)
+
 The model isn't all that good, sometimes it goes crazy.  But hey, as I always say, "when 4-bits _you reach_ look this good you will not."
 
 
