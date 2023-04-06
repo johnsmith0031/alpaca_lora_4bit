@@ -14,6 +14,7 @@ Made some adjust for the code in peft and gptq for llama, and make it possible f
 * Added V2 model support (with groupsize, both inference + finetune)
 * Added some options on finetune: set default to use eos_token instead of padding, add resume_checkpoint to continue training
 * Added offload support. load_llama_model_4bit_low_ram_and_offload_to_cpu function can be used.
+* Added monkey patch for text generation webui for fixing initial eos token issue.
 
 # Requirements
 gptq-for-llama <br>
@@ -66,4 +67,11 @@ Use the command to run
 
 ```
 python server.py
+```
+
+# Flash Attention
+
+It seems that we can apply a monkey patch for llama model. To use it, simply download the file from [MonkeyPatch](https://github.com/lm-sys/FastChat/blob/daa9c11080ceced2bd52c3e0027e4f64b1512683/fastchat/train/llama_flash_attn_monkey_patch.py). And also, flash-attention is needed, and currently do not support pytorch 2.0.
+```
+pip install flash-attn
 ```
