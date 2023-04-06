@@ -7,8 +7,8 @@ Based on https://github.com/johnsmith0031/alpaca_lora_4bit
 Can run real-time LLM chat using alpaca on a 8GB NVIDIA/CUDA GPU (ie 3070 Ti mobile)
 
 ## Requirements
-- linux with docker
-- nvidia GPU
+- Docker
+- NVIDIA GPU
 
 ## Installation
 
@@ -19,13 +19,9 @@ docker run -p 7086:7086 alpaca_lora_4bit
 Point your browser to http://localhost:7086
 
 ## Results
-It's fast on a 3070 Ti.
+It's fast on a 3070 Ti mobile.  Uses 5-6 GB of GPU RAM.
 
-### Discussion
-The model isn't all that good, sometimes it goes crazy.  But hey, "when 4-bits _you reach_ look this good you will not."
-
-But it is fast (on my 3070 Ti mobile at least)
-
+The model isn't all that good, sometimes it goes crazy.  But hey, as I always say, "when 4-bits _you reach_ look this good you will not."
 
 
 ## References

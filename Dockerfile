@@ -12,8 +12,7 @@ RUN pip3 install --upgrade pip requests tqdm
 RUN pip install torch==2.0.0
 RUN pip install semantic-version==2.10.0
 
-RUN git clone --depth=1 --branch main https://github.com/andybarry/alpaca_lora_4bit_docker.git && cd alpaca_lora_4bit
-# && git checkout 86387a0a3575c82e689a452c20b2c9a5cc94a0f3
+RUN git clone --depth=1 --branch main https://github.com/andybarry/alpaca_lora_4bit_docker.git alpaca_lora_4bit && cd alpaca_lora_4bit
 
 WORKDIR alpaca_lora_4bit
 
@@ -26,7 +25,6 @@ COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
 RUN git clone --depth=1 --branch main https://github.com/andybarry/text-generation-webui-4bit.git text-generation-webui-tmp && cd text-generation-webui-tmp 
-# && git checkout 378d21e80c3d6f11a4835e57597c69e340008e2c 
 
 RUN mv -f text-generation-webui-tmp/* text-generation-webui/
 
@@ -43,4 +41,4 @@ RUN cd text-generation-webui && ln -s ../autograd_4bit.py ./autograd_4bit.py && 
 
 # Run the server
 WORKDIR /alpaca_lora_4bit/text-generation-webui
-CMD ["python", "server.py"]
+CMD ["python", "-u", "server.py", "--listen", "--chat"]
