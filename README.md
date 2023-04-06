@@ -13,8 +13,9 @@ Can run real-time LLM chat using alpaca on a 8GB NVIDIA/CUDA GPU (ie 3070 Ti mob
 ## Installation
 
 ```
+git clone https://github.com/andybarry/alpaca_lora_4bit_docker.git
 docker build -t alpaca_lora_4bit .
-docker run -p 7086:7086 alpaca_lora_4bit
+docker run --gpus=all -p 7860:7860 alpaca_lora_4bit
 ```
 Point your browser to http://localhost:7086
 
