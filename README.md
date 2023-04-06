@@ -17,7 +17,7 @@ git clone https://github.com/andybarry/alpaca_lora_4bit_docker.git
 docker build -t alpaca_lora_4bit .
 docker run --gpus=all -p 7860:7860 alpaca_lora_4bit
 ```
-Point your browser to http://localhost:7086
+Point your browser to http://localhost:7860
 
 ## Results
 It's fast on a 3070 Ti mobile.  Uses 5-6 GB of GPU RAM.
