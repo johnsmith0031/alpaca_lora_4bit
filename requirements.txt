@@ -3,7 +3,9 @@ accelerate
 bitsandbytes
 datasets
 sentencepiece
-safetensors
+safetensors==0.3.0
+gradio
+semantic-version==2.10.0
 git+https://github.com/huggingface/transformers.git
 git+https://github.com/sterlind/GPTQ-for-LLaMa.git@lora_4bit
 git+https://github.com/sterlind/peft.git

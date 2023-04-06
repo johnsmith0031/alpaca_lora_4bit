@@ -7,9 +7,9 @@ from peft.tuners.lora import Linear4bitLt
 
 def load_model_llama(*args, **kwargs):
 
-    config_path = '../llama-13b-4bit/'
-    model_path = '../llama-13b-4bit.pt'
-    lora_path = '../alpaca13b_lora/'
+    config_path = '../llama-7b-4bit/'
+    model_path = '../llama-7b-4bit.pt'
+    lora_path = '../alpaca7b_lora/'
 
     print("Loading {} ...".format(model_path))
     t0 = time.time()
@@ -25,7 +25,9 @@ def load_model_llama(*args, **kwargs):
             if m.groupsize == -1:
                 m.zeros = m.zeros.half()
             m.scales = m.scales.half()
-            m.bias = m.bias.half()
+
+            # This line failed for me, commenting it out seems to work...
+            #m.bias = m.bias.half()
     autograd_4bit.use_new = True
     autograd_4bit.auto_switch = True
     
@@ -35,7 +37,7 @@ def load_model_llama(*args, **kwargs):
 from modules import models
 from modules import shared
 models.load_model = load_model_llama
-shared.args.model = 'llama-13b-4bit'
+shared.args.model = 'llama-7b-4bit'
 shared.settings['name1'] = 'You'
 shared.settings['name2'] = 'Assistant'
 shared.settings['chat_prompt_size_max'] = 2048

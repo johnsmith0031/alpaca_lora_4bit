@@ -1,69 +1,36 @@
-# Alpaca Lora 4bit
-Made some adjust for the code in peft and gptq for llama, and make it possible for lora finetuning with a 4 bits base model. The same adjustment can be made for 2, 3 and 8 bits.
+# Run LLM chat in realtime on an 8GB NVIDIA GPU
 
-* Install Manual by s4rduk4r: https://github.com/s4rduk4r/alpaca_lora_4bit_readme/blob/main/README.md (**NOTE:** don't use the install script, use the requirements.txt instead.)
-* Also Remember to create a venv if you do not want the packages be overwritten.
+## Dockerfile for alpaca_lora_4bit
+Based on https://github.com/johnsmith0031/alpaca_lora_4bit
 
-# Update Logs
-* Resolved numerically unstable issue
-* Reconstruct fp16 matrix from 4bit data and call torch.matmul largely increased the inference speed.
-* Added install script for windows and linux.
-* Added Gradient Checkpointing. Now It can finetune 30b model 4bit on a single GPU with 24G VRAM with Gradient Checkpointing enabled. (finetune.py updated) (but would reduce training speed, so if having enough VRAM this option is not needed)
-* Added install manual by s4rduk4r
-* Added pip install support by sterlind, preparing to merge changes upstream
-* Added V2 model support (with groupsize, both inference + finetune)
-* Added some options on finetune: set default to use eos_token instead of padding, add resume_checkpoint to continue training
-* Added offload support. load_llama_model_4bit_low_ram_and_offload_to_cpu function can be used.
+## Use
+Can run real-time LLM chat using alpaca on a 8GB NVIDIA/CUDA GPU (ie 3070 Ti mobile)
 
-# Requirements
-gptq-for-llama <br>
-peft<br>
-The specific version is inside requirements.txt<br>
+## Requirements
+- linux with docker
+- nvidia GPU
 
-# Install
-~copy files from GPTQ-for-LLaMa into GPTQ-for-LLaMa path and re-compile cuda extension~<br>
-~copy files from peft/tuners/lora.py to peft path, replace it~<br>
-
-**NOTE:** Install scripts are no longer needed! requirements.txt now pulls from forks with the necessary patches.
+## Installation
 
 ```
-pip install -r requirements.txt
+docker build -t alpaca_lora_4bit .
+docker run -p 7086:7086 alpaca_lora_4bit
 ```
+Point your browser to http://localhost:7086
 
-# Finetune
-~The same finetune script from https://github.com/tloen/alpaca-lora can be used.~<br>
+## Results
+It's fast on a 3070 Ti.
 
-After installation, this script can be used:
+### Discussion
+The model isn't all that good, sometimes it goes crazy.  But hey, "when 4-bits _you reach_ look this good you will not."
 
-```
-python finetune.py
-```
+But it is fast (on my 3070 Ti mobile at least)
 
-# Inference
 
-After installation, this script can be used:
 
-```
-python inference.py
-```
+## References
 
-# Text Generation Webui Monkey Patch
+- https://github.com/johnsmith0031/alpaca_lora_4bit
+- https://github.com/s4rduk4r/alpaca_lora_4bit_readme/blob/main/README.md
+- https://github.com/tloen/alpaca-lora
 
-Clone the latest version of text generation webui and copy all the files into ./text-generation-webui/
-```
-git clone https://github.com/oobabooga/text-generation-webui.git
-```
-
-Open server.py and insert a line at the beginning
-```
-import custom_monkey_patch # apply monkey patch
-import gc
-import io
-...
-```
-
-Use the command to run
-
-```
-python server.py
-```
