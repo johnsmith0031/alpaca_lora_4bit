@@ -7,6 +7,7 @@ Based on https://github.com/johnsmith0031/alpaca_lora_4bit
 Can run real-time LLM chat using alpaca on a 8GB NVIDIA/CUDA GPU (ie 3070 Ti mobile)
 
 ## Requirements
+- Linux
 - Docker
 - NVIDIA GPU with driver version that supports CUDA 11.7+ (e.g. 525)
 
