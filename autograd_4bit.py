@@ -44,6 +44,7 @@ try:
             output = tu.triton_matmul(x, qweight, scales, qzeros, g_idx, bits, maxq)
             ctx.save_for_backward(qweight, scales, qzeros, g_idx)
             ctx.bits, ctx.maxq = bits, maxq
+            output = output.clone()
             return output
         
         @staticmethod
