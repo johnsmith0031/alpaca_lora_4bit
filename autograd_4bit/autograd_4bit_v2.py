@@ -1,69 +1,73 @@
-import matmul_utils_4bit as mm4b
+from colorama import init, Fore, Back, Style
 import torch
 import torch.nn as nn
 import time
 import math
+import triton
+from triton_utils import matmul_248_kernel, trans_matmul_248_kernel
 
 
 class AutogradMatmul4bit(torch.autograd.Function):
-
     @staticmethod
-    def forward(ctx, x, qweight, scales, zeros, groupsize=-1):
-        ctx.save_for_backward(qweight, scales, zeros)
-        ctx.groupsize = groupsize
-        if groupsize == -1:
-            output = mm4b._matmul4bit_v1_recons(x, qweight, scales, zeros)
-        else:
-            output = mm4b._matmul4bit_v2_recons(x, qweight, scales, zeros, groupsize)
-        output = output.clone()
+    def forward(ctx, input, qweight, scales, qzeros, g_idx, bits, maxq):
+        output = torch.empty((input.shape[0], qweight.shape[1]), device='cuda', dtype=torch.float16)
+        grid = lambda META: (triton.cdiv(input.shape[0], META['BLOCK_SIZE_M']) * triton.cdiv(qweight.shape[1], META['BLOCK_SIZE_N']),)
+        matmul_248_kernel[grid](input, qweight, output,
+                                scales, qzeros, g_idx,
+                                input.shape[0], qweight.shape[1], input.shape[1], bits, maxq,
+                                input.stride(0), input.stride(1),
+                                qweight.stride(0), qweight.stride(1),
+                                output.stride(0), output.stride(1),
+                                scales.stride(0), qzeros.stride(0))
+        
+        ctx.save_for_backward(qweight, scales, qzeros, g_idx)
+        ctx.input_shape, ctx.bits,ctx.maxq = input.shape,bits, maxq
         return output
 
     @staticmethod
     def backward(ctx, grad_output):
-        qweight, scales, zeros = ctx.saved_tensors
-        groupsize = ctx.groupsize
-        if groupsize == -1:
-            grad = mm4b._matmul4bit_v1_recons(grad_output, qweight, scales, zeros, transpose=True)
-        else:
-            grad = mm4b._matmul4bit_v2_recons(grad_output, qweight, scales, zeros, groupsize=groupsize, transpose=True)
-        return grad, None, None, None, None
+        input_shape, bits, maxq = ctx.input_shape, ctx.bits, ctx.maxq
+        qweight, scales, qzeros, g_idx = ctx.saved_tensors
+        grade_input = None
+
+        if ctx.needs_input_grad[0]:
+            grade_input = torch.empty((input_shape[0], input_shape[1]), device='cuda', dtype=torch.float32)
+            grid = lambda META: (triton.cdiv(input_shape[0], META['BLOCK_SIZE_M']) * triton.cdiv(input_shape[1], META['BLOCK_SIZE_K']),)
+            trans_matmul_248_kernel[grid](grad_output, qweight, grade_input,
+                                          scales, qzeros, g_idx,
+                                          input_shape[0], qweight.shape[1], input_shape[1], bits, maxq,
+                                          grad_output.stride(0), grad_output.stride(1),
+                                          qweight.stride(0), qweight.stride(1),
+                                          grade_input.stride(0), grade_input.stride(1),
+                                          scales.stride(0), qzeros.stride(0))
+        return grade_input, None, None, None, None, None, None
 
 
-# Assumes layer is perfectly divisible into 256 * 256 blocks
 class Autograd4bitQuantLinear(nn.Module):
 
-    def __init__(self, infeatures, outfeatures, groupsize=-1):
+    def __init__(self, in_features, out_features, groupsize, bias=True):
         super().__init__()
-        bits = 4
-        self.in_features = infeatures
-        self.out_features = outfeatures
-        self.bits = bits
-        self.groupsize = groupsize
-        if groupsize == -1:
-            self.register_buffer('zeros', torch.empty((outfeatures, 1)))
-            self.register_buffer('scales', torch.empty((outfeatures, 1)))
+        self.in_features = in_features
+        self.out_features = out_features
+        self.bits = 4  # Hardcoded 4-bits quantizations
+        self.maxq = 2 ** self.bits - 1
+        self.groupsize = groupsize if groupsize != -1 else in_features
+        
+        self.register_buffer('qweight', torch.zeros((in_features // 32 * self.bits, out_features), dtype=torch.int32))
+        self.register_buffer('qzeros', torch.zeros((math.ceil(in_features / self.groupsize), out_features // 32 * self.bits), dtype=torch.int32))
+        self.register_buffer('scales', torch.zeros((math.ceil(in_features / self.groupsize), out_features), dtype=torch.float16))
+        self.register_buffer('g_idx', torch.tensor([i // self.groupsize  for i in range(in_features)], dtype = torch.int32))
+        if bias:
+            self.register_buffer('bias', torch.zeros(out_features,dtype=torch.float16))
         else:
-            self.register_buffer('qzeros',
-                                  torch.empty((math.ceil(infeatures/groupsize), outfeatures // 256 * (bits * 8)), dtype=torch.int)
-                                )
-            self.register_buffer('scales', torch.empty((math.ceil(infeatures/groupsize), outfeatures)))
-            self.register_buffer('g_idx', torch.tensor([i // self.groupsize  for i in range(infeatures)], dtype = torch.int32))
-        self.register_buffer('bias', torch.empty(outfeatures))
-        self.register_buffer(
-            'qweight', torch.empty((infeatures // 256 * (bits * 8), outfeatures), dtype=torch.int)
-        )
-
-
+            self.bias = None
+        
     def forward(self, x):
-        if torch.is_grad_enabled():
-            out = AutogradMatmul4bit.apply(x, self.qweight, self.scales,
-                                           self.qzeros if self.groupsize != -1 else self.zeros, self.groupsize)
-            out += self.bias
-        else:
-            out = mm4b.matmul4bit(x, self.qweight, self.scales,
-                                  self.qzeros if self.groupsize != -1 else self.zeros, self.groupsize)
-            out += self.bias
-        return out
+        out_shape = x.shape[:-1] + (self.out_features, )
+        out = AutogradMatmul4bit.apply(x.reshape(-1,x.shape[-1]), self.qweight, self.scales, 
+                                        self.qzeros, self.g_idx, self.bits, self.maxq)
+        out = out + self.bias if self.bias is not None else out  
+        return out.reshape(out_shape)
 
 
 def make_quant_for_4bit_autograd(module, names, name='', groupsize=-1):
@@ -84,22 +88,20 @@ def model_to_half(model):
     model.half()
     for n, m in model.named_modules():
         if isinstance(m, Autograd4bitQuantLinear):
-            if m.groupsize == -1:
-                m.zeros = m.zeros.half()
+            m.qzeros = m.qzeros.half()
             m.scales = m.scales.half()
             m.bias = m.bias.half()
-    print('Converted as Half.')
+    print(Style.BRIGHT + Fore.YELLOW + 'Converted as Half.')
 
 
 def model_to_float(model):
     model.float()
     for n, m in model.named_modules():
         if isinstance(m, Autograd4bitQuantLinear):
-            if m.groupsize == -1:
-                m.zeros = m.zeros.float()
+            m.qzeros = m.qzeros.float()
             m.scales = m.scales.float()
             m.bias = m.bias.float()
-    print('Converted as Float.')
+    print(Style.BRIGHT + Fore.YELLOW + 'Converted as Float.')
 
 
 def find_layers(module, layers=[nn.Conv2d, nn.Linear], name=''):
@@ -117,7 +119,7 @@ def load_llama_model_4bit_low_ram(config_path, model_path, groupsize=-1, half=Fa
     import accelerate
     from transformers import LlamaConfig, LlamaForCausalLM, LlamaTokenizer
 
-    print("Loading Model ...")
+    print(Style.BRIGHT + Fore.CYAN + "Loading Model ...")
     t0 = time.time()
 
     with accelerate.init_empty_weights():
@@ -144,7 +146,7 @@ def load_llama_model_4bit_low_ram(config_path, model_path, groupsize=-1, half=Fa
     tokenizer = LlamaTokenizer.from_pretrained(config_path)
     tokenizer.truncation_side = 'left'
 
-    print(f"Loaded the model in {(time.time()-t0):.2f} seconds.")
+    print(Style.BRIGHT + Fore.GREEN + f"Loaded the model in {(time.time()-t0):.2f} seconds.")
 
     return model, tokenizer
 
@@ -155,7 +157,7 @@ def load_llama_model_4bit_low_ram_and_offload_to_cpu(config_path, model_path, lo
     if max_memory is None:
         max_memory = {0: '24Gib', 'cpu': '48Gib'}
 
-    print("Loading Model ...")
+    print(Style.BRIGHT + Fore.CYAN + "Loading Model ...")
     t0 = time.time()
 
     with accelerate.init_empty_weights():
@@ -180,15 +182,14 @@ def load_llama_model_4bit_low_ram_and_offload_to_cpu(config_path, model_path, lo
         from peft import PeftModel
         from peft.tuners.lora import Linear4bitLt
         model = PeftModel.from_pretrained(model, lora_path, device_map={'': 'cpu'}, torch_dtype=torch.float32)
-        print('{} Lora Applied.'.format(lora_path))
+        print(Style.BRIGHT + Fore.GREEN + '{} Lora Applied.'.format(lora_path))
 
     model.seqlen = seqlen
 
     print('Apply half ...')
     for n, m in model.named_modules():
         if isinstance(m, Autograd4bitQuantLinear) or ((lora_path is not None) and isinstance(m, Linear4bitLt)):
-            if m.groupsize == -1:
-                m.zeros = m.zeros.half()
+            m.qzeros = m.qzeros.half()
             m.scales = m.scales.half()
             m.bias = m.bias.half()
 
@@ -196,7 +197,7 @@ def load_llama_model_4bit_low_ram_and_offload_to_cpu(config_path, model_path, lo
     device_map = accelerate.infer_auto_device_map(model, max_memory=max_memory, no_split_module_classes=["LlamaDecoderLayer"])
     model = accelerate.dispatch_model(model, device_map=device_map, offload_buffers=True, main_device=0)
     torch.cuda.empty_cache()
-    print('Total {:.2f} Gib VRAM used.'.format(torch.cuda.memory_allocated() / 1024 / 1024))
+    print(Style.BRIGHT + Fore.YELLOW + 'Total {:.2f} Gib VRAM used.'.format(torch.cuda.memory_allocated() / 1024 / 1024))
 
     # rotary_emb fix
     for n, m in model.named_modules():
@@ -215,6 +216,6 @@ def load_llama_model_4bit_low_ram_and_offload_to_cpu(config_path, model_path, lo
     tokenizer = LlamaTokenizer.from_pretrained(config_path)
     tokenizer.truncation_side = 'left'
 
-    print(f"Loaded the model in {(time.time()-t0):.2f} seconds.")
+    print(Style.BRIGHT + Fore.GREEN + f"Loaded the model in {(time.time()-t0):.2f} seconds.")
 
     return model, tokenizer
