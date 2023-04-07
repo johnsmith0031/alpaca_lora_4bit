@@ -4,6 +4,8 @@ import torch.nn as nn
 import time
 import math
 from torch.cuda.amp import custom_bwd, custom_fwd
+from colorama import init, Fore, Back, Style
+init(autoreset=True)
 
 
 class AutogradMatmul4bitCuda(torch.autograd.Function):
@@ -72,14 +74,14 @@ def switch_backend_to(to_backend):
     if to_backend == 'cuda':
         AutogradMatmul4bit = AutogradMatmul4bitCuda
         backend = 'cuda'
-        print('Using CUDA implementation.')
+        print(Style.BRIGHT + Fore.GREEN + 'Using CUDA implementation.')
     elif to_backend == 'triton':
         # detect if AutogradMatmul4bitTriton is defined
         if 'AutogradMatmul4bitTriton' not in globals():
             raise ValueError('Triton not found. Please install triton_utils.')
         AutogradMatmul4bit = AutogradMatmul4bitTriton
         backend = 'triton'
-        print('Using Triton implementation.')
+        print(Style.BRIGHT + Fore.GREEN + 'Using Triton implementation.')
     else:
         raise ValueError('Backend not supported.')
 
@@ -157,7 +159,7 @@ def model_to_half(model):
                 m.zeros = m.zeros.half()
             m.scales = m.scales.half()
             m.bias = m.bias.half()
-    print('Converted as Half.')
+    print(Style.BRIGHT + Fore.YELLOW + 'Converted as Half.')
 
 
 def model_to_float(model):
@@ -168,7 +170,7 @@ def model_to_float(model):
                 m.zeros = m.zeros.float()
             m.scales = m.scales.float()
             m.bias = m.bias.float()
-    print('Converted as Float.')
+    print(Style.BRIGHT + Fore.YELLOW + 'Converted as Float.')
 
 
 def find_layers(module, layers=[nn.Conv2d, nn.Linear], name=''):
@@ -186,7 +188,7 @@ def load_llama_model_4bit_low_ram(config_path, model_path, groupsize=-1, half=Fa
     import accelerate
     from transformers import LlamaConfig, LlamaForCausalLM, LlamaTokenizer
 
-    print("Loading Model ...")
+    print(Style.BRIGHT + Fore.CYAN + "Loading Model ...")
     t0 = time.time()
 
     with accelerate.init_empty_weights():
@@ -213,7 +215,7 @@ def load_llama_model_4bit_low_ram(config_path, model_path, groupsize=-1, half=Fa
     tokenizer = LlamaTokenizer.from_pretrained(config_path)
     tokenizer.truncation_side = 'left'
 
-    print(f"Loaded the model in {(time.time()-t0):.2f} seconds.")
+    print(Style.BRIGHT + Fore.GREEN + f"Loaded the model in {(time.time()-t0):.2f} seconds.")
 
     return model, tokenizer
 
@@ -224,7 +226,7 @@ def load_llama_model_4bit_low_ram_and_offload(config_path, model_path, lora_path
     if max_memory is None:
         max_memory = {0: '24Gib', 'cpu': '48Gib'}
 
-    print("Loading Model ...")
+    print(Style.BRIGHT + Fore.CYAN + "Loading Model ...")
     t0 = time.time()
 
     with accelerate.init_empty_weights():
@@ -249,7 +251,7 @@ def load_llama_model_4bit_low_ram_and_offload(config_path, model_path, lora_path
         from peft import PeftModel
         from peft.tuners.lora import Linear4bitLt
         model = PeftModel.from_pretrained(model, lora_path, device_map={'': 'cpu'}, torch_dtype=torch.float32)
-        print('{} Lora Applied.'.format(lora_path))
+        print(Style.BRIGHT + Fore.GREEN + '{} Lora Applied.'.format(lora_path))
 
     model.seqlen = seqlen
 
@@ -265,7 +267,7 @@ def load_llama_model_4bit_low_ram_and_offload(config_path, model_path, lora_path
     device_map = accelerate.infer_auto_device_map(model, max_memory=max_memory, no_split_module_classes=["LlamaDecoderLayer"])
     model = accelerate.dispatch_model(model, device_map=device_map, offload_buffers=True, main_device=0)
     torch.cuda.empty_cache()
-    print('Total {:.2f} Gib VRAM used.'.format(torch.cuda.memory_allocated() / 1024 / 1024))
+    print(Style.BRIGHT + Fore.YELLOW + 'Total {:.2f} Gib VRAM used.'.format(torch.cuda.memory_allocated() / 1024 / 1024))
 
     # rotary_emb fix
     for n, m in model.named_modules():
@@ -284,7 +286,7 @@ def load_llama_model_4bit_low_ram_and_offload(config_path, model_path, lora_path
     tokenizer = LlamaTokenizer.from_pretrained(config_path)
     tokenizer.truncation_side = 'left'
 
-    print(f"Loaded the model in {(time.time()-t0):.2f} seconds.")
+    print(Style.BRIGHT + Fore.GREEN + f"Loaded the model in {(time.time()-t0):.2f} seconds.")
 
     return model, tokenizer
 
