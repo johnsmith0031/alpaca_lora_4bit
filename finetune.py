@@ -24,6 +24,12 @@ if ft_config.flash_attention:
     from monkeypatch.llama_flash_attn_monkey_patch import replace_llama_attn_with_flash_attn
     replace_llama_attn_with_flash_attn()
 
+import autograd_4bit
+if ft_config.backend.lower() == 'triton':
+    autograd_4bit.switch_backend_to('triton')
+else:
+    autograd_4bit.switch_backend_to('cuda')
+
 import sys
 
 import peft
@@ -65,10 +71,16 @@ lora_config = LoraConfig(
 if ft_config.lora_apply_dir is None:
     model = get_peft_model(model, lora_config)
 else:
+    device_map = ft_config.device_map
     if ft_config.ddp:
-        model = PeftModel.from_pretrained(model, ft_config.lora_apply_dir, device_map="auto", torch_dtype=torch.float32)  # ! Direct copy from inference.py
+        device_map = {'': 0}
     else:
-        model = PeftModel.from_pretrained(model, ft_config.lora_apply_dir, device_map={'': 0}, torch_dtype=torch.float32)
+        if torch.cuda.device_count() > 1:
+            device_map = "auto"
+        else:
+            device_map = {'': 0}
+    print('Device map for lora:', device_map)
+    model = PeftModel.from_pretrained(model, ft_config.lora_apply_dir, device_map=device_map, torch_dtype=torch.float32)
     print(ft_config.lora_apply_dir, 'loaded')
 
 
