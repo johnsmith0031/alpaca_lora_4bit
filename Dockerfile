@@ -70,6 +70,10 @@ RUN mv -f text-generation-webui-tmp/* text-generation-webui/
 
 # Symlink for monkeypatch
 RUN cd text-generation-webui && ln -s ../autograd_4bit.py ./autograd_4bit.py && ln -s ../matmul_utils_4bit.py .
+
+# Swap to the 7bn parameter model
+RUN sed -i 's/llama-13b-4bit/llama-7b-4bit/g' text-generation-webui/custom_monkey_patch.py && sed -i 's/alpaca13b_lora/alpaca7b_lora/g' text-generation-webui/custom_monkey_patch.py
+
 # Run the server
 WORKDIR /alpaca_lora_4bit/text-generation-webui
 CMD ["python", "-u", "server.py", "--listen", "--chat"]
