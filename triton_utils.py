@@ -1,24 +1,31 @@
 import triton
 import triton.language as tl
 import torch
+import custom_autotune
+
 
 # code based https://github.com/fpgaminer/GPTQ-triton
-@triton.autotune(
+@custom_autotune.autotune(
     configs=[
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 128, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=3, num_warps=8),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 256, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=3, num_warps=8),
-        triton.Config({'BLOCK_SIZE_M': 256, 'BLOCK_SIZE_N': 128, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=3, num_warps=8),
         triton.Config({'BLOCK_SIZE_M': 256, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
         triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 256, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
         triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 128, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
         triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
         triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 128, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
         triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=5, num_warps=2),
-        triton.Config({'BLOCK_SIZE_M': 32, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=5, num_warps=2),
+        # These provided a benefit on a 3090
+        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
+        triton.Config({'BLOCK_SIZE_M': 32, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
+        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
+        triton.Config({'BLOCK_SIZE_M': 32, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 64, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
+        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 64, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
+        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 64, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
+        triton.Config({'BLOCK_SIZE_M': 32, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 128, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
     ],
-    key=['M', 'N', 'K'],
+    key=['M', 'N'],
+    nearest_power_of_two=True,
 )
+
 
 @triton.jit
 def matmul_248_kernel(a_ptr, b_ptr, c_ptr,
@@ -62,7 +69,7 @@ def matmul_248_kernel(a_ptr, b_ptr, c_ptr,
     g_ptrs = g_ptr + offs_k
     # shifter is used to extract the N bits of each element in the 32-bit word from B
     scales_ptrs = scales_ptr + offs_bn[None, :]
-    zeros_ptrs = zeros_ptr + (offs_bn[None, :]// infearure_per_bits) 
+    zeros_ptrs = zeros_ptr + (offs_bn[None, :] // infearure_per_bits) 
     
     shifter = (offs_k % infearure_per_bits) * bits
     zeros_shifter = (offs_bn % infearure_per_bits) * bits
@@ -78,12 +85,15 @@ def matmul_248_kernel(a_ptr, b_ptr, c_ptr,
         zeros = (zeros >> zeros_shifter[None, :]) & maxq
         zeros = (zeros + 1)
         
-        a = tl.load(a_ptrs, mask=a_mask, other=0.)   # (BLOCK_SIZE_M, BLOCK_SIZE_K)
+        a = tl.load(a_ptrs, mask=a_mask, other=0.0)   # (BLOCK_SIZE_M, BLOCK_SIZE_K)
         b = tl.load(b_ptrs)   # (BLOCK_SIZE_K, BLOCK_SIZE_N), but repeated
 
         # Now we need to unpack b (which is N-bit values) into 32-bit values
         b = (b >> shifter[:, None]) & maxq  # Extract the N-bit values
         b = (b - zeros) * scales  # Scale and shift
+        # ! Convert to fp16
+        b = b.to(tl.float16)
+        a = a.to(tl.float16)
 
         accumulator += tl.dot(a, b)
         a_ptrs += BLOCK_SIZE_K
@@ -93,25 +103,31 @@ def matmul_248_kernel(a_ptr, b_ptr, c_ptr,
     c = accumulator.to(tl.float16)
     c_ptrs = c_ptr + stride_cm * offs_am[:, None] + stride_cn * offs_bn[None, :]
     c_mask = (offs_am[:, None] < M) & (offs_bn[None, :] < N)
-    tl.store(c_ptrs, accumulator, mask=c_mask)
+    tl.store(c_ptrs, c, mask=c_mask)
     
+
 # code based https://github.com/fpgaminer/GPTQ-triton
-@triton.autotune(
+@custom_autotune.autotune(
     configs=[
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 128, 'GROUP_SIZE_M': 8}, num_stages=3, num_warps=8),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 256, 'GROUP_SIZE_M': 8}, num_stages=3, num_warps=8),
-        triton.Config({'BLOCK_SIZE_M': 256, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 128, 'GROUP_SIZE_M': 8}, num_stages=3, num_warps=8),
-        triton.Config({'BLOCK_SIZE_M': 256, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 64, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 256, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 128, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 64, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 128, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=5, num_warps=2),
-        triton.Config({'BLOCK_SIZE_M': 32, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 64, 'GROUP_SIZE_M': 8}, num_stages=5, num_warps=2),
+        triton.Config({'BLOCK_SIZE_M': 256, 'BLOCK_SIZE_K': 64, 'BLOCK_SIZE_N': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
+        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_K': 256, 'BLOCK_SIZE_N': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
+        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_K': 128, 'BLOCK_SIZE_N': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
+        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_K': 64, 'BLOCK_SIZE_N': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
+        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_K': 128, 'BLOCK_SIZE_N': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
+        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_K': 32, 'BLOCK_SIZE_N': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
+        # These provided a benefit on a 3090
+        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_K': 64, 'BLOCK_SIZE_N': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
+        triton.Config({'BLOCK_SIZE_M': 32, 'BLOCK_SIZE_K': 64, 'BLOCK_SIZE_N': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
+        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_K': 32, 'BLOCK_SIZE_N': 32, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
+        triton.Config({'BLOCK_SIZE_M': 32, 'BLOCK_SIZE_K': 64, 'BLOCK_SIZE_N': 64, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
+        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_K': 64, 'BLOCK_SIZE_N': 64, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
+        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_K': 32, 'BLOCK_SIZE_N': 64, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
+        triton.Config({'BLOCK_SIZE_M': 32, 'BLOCK_SIZE_K': 64, 'BLOCK_SIZE_N': 128, 'GROUP_SIZE_M': 8}, num_stages=4, num_warps=4),
     ],
-    key=['M', 'N', 'K'],
+    key=['M', 'K'],
+    nearest_power_of_two=True,
 )
+
 
 @triton.jit
 def trans_matmul_248_kernel(a_ptr, b_ptr, c_ptr,
@@ -157,7 +173,7 @@ def trans_matmul_248_kernel(a_ptr, b_ptr, c_ptr,
     
     # shifter is used to extract the N bits of each element in the 32-bit word from B
     scales_ptrs = scales_ptr + offs_n[None, :]  + g_idx[:, None] * stride_scales
-    zeros_ptrs = zeros_ptr + (offs_n[None, :]// infearure_per_bits) + g_idx[:, None] * stride_zeros
+    zeros_ptrs = zeros_ptr + (offs_n[None, :] // infearure_per_bits) + g_idx[:, None] * stride_zeros
     
     shifter = (offs_bk % infearure_per_bits) * bits
     zeros_shifter = (offs_n % infearure_per_bits) * bits
@@ -178,6 +194,9 @@ def trans_matmul_248_kernel(a_ptr, b_ptr, c_ptr,
         b = (b >> shifter[:, None]) & maxq  # Extract the N-bit values
         b = (b - zeros) * scales  # Scale and shift
         b = tl.trans(b)
+        # ! Convert to fp16
+        b = b.to(tl.float16)
+        a = a.to(tl.float16)
 
         accumulator += tl.dot(a, b)
         a_ptrs += BLOCK_SIZE_N
@@ -188,11 +207,14 @@ def trans_matmul_248_kernel(a_ptr, b_ptr, c_ptr,
     c = accumulator.to(tl.float16)
     c_ptrs = c_ptr + stride_cm * offs_am[:, None] + stride_cn * offs_bk[None, :]
     c_mask = (offs_am[:, None] < M) & (offs_bk[None, :] < K)
-    tl.store(c_ptrs, accumulator, mask=c_mask)
+    tl.store(c_ptrs, c, mask=c_mask)
     
     
 def triton_matmul(input, qweight, scales, qzeros, g_idx, bits, maxq):
-    output = torch.empty((input.shape[0], qweight.shape[1]), device='cuda', dtype=torch.float16)
+    assert input.shape[-1] == qweight.shape[0] * 32 // bits
+    outshape = input.shape[:-1] + (qweight.shape[1],)
+    input = input.reshape(-1, input.shape[-1])
+    output = torch.empty((input.shape[0], qweight.shape[1]), device=scales.device, dtype=torch.float16)
     grid = lambda META: (triton.cdiv(input.shape[0], META['BLOCK_SIZE_M']) * triton.cdiv(qweight.shape[1], META['BLOCK_SIZE_N']),)
     matmul_248_kernel[grid](input, qweight, output,
                             scales, qzeros, g_idx,
@@ -201,5 +223,24 @@ def triton_matmul(input, qweight, scales, qzeros, g_idx, bits, maxq):
                             qweight.stride(0), qweight.stride(1),
                             output.stride(0), output.stride(1),
                             scales.stride(0), qzeros.stride(0))
+    output = output.reshape(outshape)
     return output
-    
+
+
+def triton_matmul_transpose(input, qweight, scales, qzeros, g_idx, bits, maxq):
+    assert input.shape[-1] == qweight.shape[1]
+    out_dim = qweight.shape[0] * 32 // bits
+    outshape = input.shape[:-1] + (out_dim,)
+    input = input.reshape(-1, input.shape[-1])
+    output_shape_mid = (input.shape[0], out_dim)
+    output = torch.empty((output_shape_mid[0], output_shape_mid[1]), device=scales.device, dtype=torch.float16)
+    grid = lambda META: (triton.cdiv(input.shape[0], META['BLOCK_SIZE_M']) * triton.cdiv(output_shape_mid[1], META['BLOCK_SIZE_K']),)
+    trans_matmul_248_kernel[grid](input, qweight, output,
+                            scales, qzeros, g_idx,
+                            input.shape[0], qweight.shape[1], output_shape_mid[1], bits, maxq,
+                            input.stride(0), input.stride(1),
+                            qweight.stride(0), qweight.stride(1),
+                            output.stride(0), output.stride(1),
+                            scales.stride(0), qzeros.stride(0))
+    output = output.reshape(outshape)
+    return output

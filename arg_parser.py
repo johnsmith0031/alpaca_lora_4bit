@@ -66,6 +66,12 @@ def parse_commandline():
 
     # Multi GPU Support
     parser_training.add_argument("--local_rank", type=int, default=0, help="local rank if using torch.distributed.launch")
+    
+    # Flash Attention
+    parser_training.add_argument("--flash_attention", action="store_true", help="enables flash attention, can improve performance and reduce VRAM use")
+
+    # Train Backend
+    parser_training.add_argument("--backend", type=str, default='cuda', help="Backend to use. Triton or Cuda.")
 
     return vars(parser.parse_args())
 
@@ -102,4 +108,6 @@ def get_config() -> Finetune4bConfig:
         use_eos_token=args["use_eos_token"]!=0,
         groupsize=args["groupsize"],
         local_rank=args["local_rank"],
+        flash_attention=args["flash_attention"],
+        backend=args["backend"],
     )
