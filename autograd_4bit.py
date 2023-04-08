@@ -107,6 +107,7 @@ class Autograd4bitQuantLinear(nn.Module):
         self.bits = bits
         self.maxq = 2 ** self.bits - 1
         self.groupsize = groupsize
+        self.g_idx = 0
         if groupsize == -1:
             self.register_buffer('zeros', torch.empty((out_features, 1)))
             self.register_buffer('scales', torch.empty((out_features, 1)))

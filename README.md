@@ -1,6 +1,21 @@
 # Alpaca Lora 4bit
 Made some adjust for the code in peft and gptq for llama, and make it possible for lora finetuning with a 4 bits base model. The same adjustment can be made for 2, 3 and 8 bits.
 
+## Quick start for running the chat UI
+
+```
+git clone https://github.com/andybarry/alpaca_lora_4bit_docker.git
+DOCCKER_BUILDKIT=1 docker build -t alpaca_lora_4bit . # build step can take 12 min
+docker run --gpus=all -p 7860:7860 alpaca_lora_4bit
+```
+Point your browser to http://localhost:7860
+
+## Results
+It's fast on a 3070 Ti mobile.  Uses 5-6 GB of GPU RAM.
+
+![](alpaca_lora_4bit_penguin_fact.gif)
+
+# Development
 * Install Manual by s4rduk4r: https://github.com/s4rduk4r/alpaca_lora_4bit_readme/blob/main/README.md (**NOTE:** don't use the install script, use the requirements.txt instead.)
 * Also Remember to create a venv if you do not want the packages be overwritten.
 
