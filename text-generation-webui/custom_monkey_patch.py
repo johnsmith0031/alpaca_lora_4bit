@@ -29,7 +29,7 @@ def load_model_llama(*args, **kwargs):
             m.scales = m.scales.half()
 
             # This line failed for me, commenting it out seems to work...
-            #m.bias = m.bias.half()
+            m.bias = m.bias.half()
     autograd_4bit.use_new = True
     autograd_4bit.auto_switch = True
     
