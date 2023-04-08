@@ -49,7 +49,7 @@ COPY --from=downloader llama-7b-4bit.pt llama-7b-4bit.pt
 
 RUN git clone --depth=1 --branch main https://github.com/oobabooga/text-generation-webui.git text-generation-webui-tmp
 
-RUN --mount=type=cache,target=/root/.cache pip install --user markdown
+RUN --mount=type=cache,target=/root/.cache pip install --user markdown gradio
 
 # Apply monkey patch
 RUN cd text-generation-webui-tmp && printf '%s'"import custom_monkey_patch # apply monkey patch\nimport gc\n\n" | cat - server.py > tmpfile && mv tmpfile server.py

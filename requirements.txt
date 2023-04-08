@@ -3,9 +3,7 @@ accelerate
 bitsandbytes
 datasets
 sentencepiece
-safetensors==0.3.0
-gradio
-semantic-version==2.10.0
+safetensors
 flash-attn
 triton
 colorama
