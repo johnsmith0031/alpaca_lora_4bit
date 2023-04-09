@@ -102,7 +102,7 @@ def _matmul4bit_v2_recons(x, qweight, scales, zeros, g_idx, transpose=False):
 
 def matmul4bit(x, qweight, scales, zeros, g_idx=None):
     # detect if zeros is int32
-    if zeros.dtype == torch.int32:
+    if zeros.dtype != torch.int32:
         # use v1
         if use_new:
             if auto_switch:
