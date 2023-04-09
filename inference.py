@@ -3,6 +3,9 @@ import sys
 import time
 import torch
 from autograd_4bit import load_llama_model_4bit_low_ram, Autograd4bitQuantLinear
+from monkeypatch.peft_tuners_lora_monkey_patch import replace_peft_model_with_gptq_lora_model
+replace_peft_model_with_gptq_lora_model()
+
 config_path = './llama-13b-4bit/'
 model_path = './llama-13b-4bit.pt'
 model, tokenizer = load_llama_model_4bit_low_ram(config_path, model_path, groupsize=-1)
