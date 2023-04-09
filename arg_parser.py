@@ -62,7 +62,8 @@ def parse_commandline():
     parser_training.add_argument("--use_eos_token", default=1, type=int, help="Use eos token instead if padding with 0. enable with 1, disable with 0.")
     
     # V2 model support
-    parser_training.add_argument("--groupsize", type=int, default=-1, help="Groupsize of v2 model, use -1 to load v1 model")
+    parser_training.add_argument("--groupsize", type=int, default=-1, help="Groupsize of v2 model")
+    parser_training.add_argument("--v1", action="store_true", help="Use V1 model")
 
     # Multi GPU Support
     parser_training.add_argument("--local_rank", type=int, default=0, help="local rank if using torch.distributed.launch")
@@ -107,6 +108,7 @@ def get_config() -> Finetune4bConfig:
         txt_row_thd=args["txt_row_thd"],
         use_eos_token=args["use_eos_token"]!=0,
         groupsize=args["groupsize"],
+        v1=args["v1"],
         local_rank=args["local_rank"],
         flash_attention=args["flash_attention"],
         backend=args["backend"],

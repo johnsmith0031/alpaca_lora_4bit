@@ -12,27 +12,25 @@ class AutogradMatmul4bitCuda(torch.autograd.Function):
 
     @staticmethod
     @custom_fwd(cast_inputs=torch.float16)
-    def forward(ctx, x, qweight, scales, zeros, g_idx, bits, maxq, groupsize=-1):
-        ctx.save_for_backward(qweight, scales, zeros)
-        ctx.groupsize = groupsize
-        if groupsize == -1:
+    def forward(ctx, x, qweight, scales, zeros, g_idx, bits, maxq):
+        ctx.save_for_backward(qweight, scales, zeros, g_idx)
+        if g_idx is None:
             output = mm4b._matmul4bit_v1_recons(x, qweight, scales, zeros)
         else:
-            output = mm4b._matmul4bit_v2_recons(x, qweight, scales, zeros, groupsize)
+            output = mm4b._matmul4bit_v2_recons(x, qweight, scales, zeros, g_idx)
         output = output.clone()
         return output
 
     @staticmethod
     @custom_bwd
     def backward(ctx, grad_output):
-        qweight, scales, zeros = ctx.saved_tensors
-        groupsize = ctx.groupsize
+        qweight, scales, zeros, g_idx = ctx.saved_tensors
         if ctx.needs_input_grad[0]:
-            if groupsize == -1:
+            if g_idx is None:
                 grad = mm4b._matmul4bit_v1_recons(grad_output, qweight, scales, zeros, transpose=True)
             else:
-                grad = mm4b._matmul4bit_v2_recons(grad_output, qweight, scales, zeros, groupsize=groupsize, transpose=True)
-        return grad, None, None, None, None, None, None, None
+                grad = mm4b._matmul4bit_v2_recons(grad_output, qweight, scales, zeros, g_idx, transpose=True)
+        return grad, None, None, None, None, None, None
 
 
 try:
@@ -42,7 +40,7 @@ try:
 
         @staticmethod
         @custom_fwd(cast_inputs=torch.float16)
-        def forward(ctx, x, qweight, scales, qzeros, g_idx, bits, maxq, groupsize=-1):
+        def forward(ctx, x, qweight, scales, qzeros, g_idx, bits, maxq):
             output = tu.triton_matmul(x, qweight, scales, qzeros, g_idx, bits, maxq)
             ctx.save_for_backward(qweight, scales, qzeros, g_idx)
             ctx.bits, ctx.maxq = bits, maxq
@@ -58,7 +56,7 @@ try:
 
             if ctx.needs_input_grad[0]:
                 grad_input = tu.triton_matmul_transpose(grad_output, qweight, scales, qzeros, g_idx, bits, maxq)
-            return grad_input, None, None, None, None, None, None, None
+            return grad_input, None, None, None, None, None, None
     
 except ImportError:
     print('Triton not found. Please run "pip install triton".')
@@ -86,9 +84,9 @@ def switch_backend_to(to_backend):
         raise ValueError('Backend not supported.')
 
 
-def matmul4bit_with_backend(x, qweight, scales, qzeros, g_idx, bits, maxq, groupsize):
+def matmul4bit_with_backend(x, qweight, scales, qzeros, g_idx, bits, maxq):
     if backend == 'cuda':
-        return mm4b.matmul4bit(x, qweight, scales, qzeros, groupsize)
+        return mm4b.matmul4bit(x, qweight, scales, qzeros, g_idx)
     elif backend == 'triton':
         assert qzeros.dtype == torch.int32
         return tu.triton_matmul(x, qweight, scales, qzeros, g_idx, bits, maxq)
@@ -99,17 +97,20 @@ def matmul4bit_with_backend(x, qweight, scales, qzeros, g_idx, bits, maxq, group
 # Assumes layer is perfectly divisible into 256 * 256 blocks
 class Autograd4bitQuantLinear(nn.Module):
 
-    def __init__(self, in_features, out_features, groupsize=-1):
+    def __init__(self, in_features, out_features, groupsize=-1, is_v1_model=False):
         super().__init__()
         bits = 4
         self.in_features = in_features
         self.out_features = out_features
         self.bits = bits
         self.maxq = 2 ** self.bits - 1
+        groupsize = groupsize if groupsize != -1 else in_features
         self.groupsize = groupsize
-        if groupsize == -1:
+        self.is_v1_model = is_v1_model
+        if is_v1_model:
             self.register_buffer('zeros', torch.empty((out_features, 1)))
             self.register_buffer('scales', torch.empty((out_features, 1)))
+            self.g_idx = None
         else:
             self.register_buffer('qzeros',
                                   torch.empty((math.ceil(in_features/groupsize), out_features // 256 * (bits * 8)), dtype=torch.int32)
@@ -125,19 +126,17 @@ class Autograd4bitQuantLinear(nn.Module):
     def forward(self, x):
         if torch.is_grad_enabled():
             out = AutogradMatmul4bit.apply(x, self.qweight, self.scales,
-                                           self.qzeros if self.groupsize != -1 else self.zeros,
-                                           self.g_idx, self.bits, self.maxq,
-                                           self.groupsize)
+                                           self.qzeros if not self.is_v1_model else self.zeros,
+                                           self.g_idx, self.bits, self.maxq)
         else:
             out = matmul4bit_with_backend(x, self.qweight, self.scales,
-                                          self.qzeros if self.groupsize != -1 else self.zeros,
-                                          self.g_idx, self.bits, self.maxq,
-                                          self.groupsize)
+                                          self.qzeros if not self.is_v1_model else self.zeros,
+                                          self.g_idx, self.bits, self.maxq)
         out += self.bias
         return out
 
 
-def make_quant_for_4bit_autograd(module, names, name='', groupsize=-1):
+def make_quant_for_4bit_autograd(module, names, name='', groupsize=-1, is_v1_model=False):
     if isinstance(module, Autograd4bitQuantLinear):
         return
     for attr in dir(module):
@@ -145,17 +144,17 @@ def make_quant_for_4bit_autograd(module, names, name='', groupsize=-1):
         name1 = name + '.' + attr if name != '' else attr
         if name1 in names:
             setattr(
-                module, attr, Autograd4bitQuantLinear(tmp.in_features, tmp.out_features, groupsize=groupsize)
+                module, attr, Autograd4bitQuantLinear(tmp.in_features, tmp.out_features, groupsize=groupsize, is_v1_model=is_v1_model)
             )
     for name1, child in module.named_children():
-        make_quant_for_4bit_autograd(child, names, name + '.' + name1 if name != '' else name1, groupsize=groupsize)
+        make_quant_for_4bit_autograd(child, names, name + '.' + name1 if name != '' else name1, groupsize=groupsize, is_v1_model=is_v1_model)
 
 
 def model_to_half(model):
     model.half()
     for n, m in model.named_modules():
         if isinstance(m, Autograd4bitQuantLinear):
-            if m.groupsize == -1:
+            if m.is_v1_model:
                 m.zeros = m.zeros.half()
             m.scales = m.scales.half()
             m.bias = m.bias.half()
@@ -166,7 +165,7 @@ def model_to_float(model):
     model.float()
     for n, m in model.named_modules():
         if isinstance(m, Autograd4bitQuantLinear):
-            if m.groupsize == -1:
+            if m.is_v1_model:
                 m.zeros = m.zeros.float()
             m.scales = m.scales.float()
             m.bias = m.bias.float()
@@ -184,7 +183,7 @@ def find_layers(module, layers=[nn.Conv2d, nn.Linear], name=''):
     return res
 
 
-def load_llama_model_4bit_low_ram(config_path, model_path, groupsize=-1, half=False, device_map="auto", seqlen=2048):
+def load_llama_model_4bit_low_ram(config_path, model_path, groupsize=-1, half=False, device_map="auto", seqlen=2048, is_v1_model=False):
     import accelerate
     from transformers import LlamaConfig, LlamaForCausalLM, LlamaTokenizer
 
@@ -199,7 +198,7 @@ def load_llama_model_4bit_low_ram(config_path, model_path, groupsize=-1, half=Fa
         for name in ['lm_head']:
             if name in layers:
                 del layers[name]
-        make_quant_for_4bit_autograd(model, layers, groupsize=groupsize)
+        make_quant_for_4bit_autograd(model, layers, groupsize=groupsize, is_v1_model=is_v1_model)
     model = accelerate.load_checkpoint_and_dispatch(
         model=model,
         checkpoint=model_path,
@@ -219,7 +218,7 @@ def load_llama_model_4bit_low_ram(config_path, model_path, groupsize=-1, half=Fa
 
     return model, tokenizer
 
-def load_llama_model_4bit_low_ram_and_offload(config_path, model_path, lora_path=None, groupsize=-1, seqlen=2048, max_memory=None):
+def load_llama_model_4bit_low_ram_and_offload(config_path, model_path, lora_path=None, groupsize=-1, seqlen=2048, max_memory=None, is_v1_model=False):
     import accelerate
     from transformers import LlamaConfig, LlamaForCausalLM, LlamaTokenizer
 
@@ -237,7 +236,7 @@ def load_llama_model_4bit_low_ram_and_offload(config_path, model_path, lora_path
         for name in ['lm_head']:
             if name in layers:
                 del layers[name]
-        make_quant_for_4bit_autograd(model, layers, groupsize=groupsize)
+        make_quant_for_4bit_autograd(model, layers, groupsize=groupsize, is_v1_model=is_v1_model)
     accelerate.load_checkpoint_in_model(model, checkpoint=model_path, device_map={'': 'cpu'})
 
     # rotary_emb fix
@@ -258,7 +257,7 @@ def load_llama_model_4bit_low_ram_and_offload(config_path, model_path, lora_path
     print('Apply half ...')
     for n, m in model.named_modules():
         if isinstance(m, Autograd4bitQuantLinear) or ((lora_path is not None) and isinstance(m, Linear4bitLt)):
-            if m.groupsize == -1:
+            if m.is_v1_model:
                 m.zeros = m.zeros.half()
             m.scales = m.scales.half()
             m.bias = m.bias.half()

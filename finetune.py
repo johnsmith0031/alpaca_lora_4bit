@@ -44,8 +44,6 @@ from peft import LoraConfig, get_peft_model, get_peft_model_state_dict, PeftMode
 # ! Config
 import train_data
 
-
-
 # * Show loaded parameters
 if ft_config.local_rank == 0:
     print(f"{ft_config}\n")
@@ -57,7 +55,8 @@ if ft_config.gradient_checkpointing:
 model, tokenizer = load_llama_model_4bit_low_ram(ft_config.llama_q4_config_dir,
                                                   ft_config.llama_q4_model,
                                                   device_map=ft_config.device_map,
-                                                  groupsize=ft_config.groupsize)
+                                                  groupsize=ft_config.groupsize,
+                                                  is_v1_model=ft_config.v1)
 
 # Config Lora
 lora_config = LoraConfig(

@@ -14,7 +14,7 @@ class Finetune4bConfig:
                  gradient_checkpointing_ratio: float,
                  warmup_steps: int, save_steps: int, save_total_limit: int, logging_steps: int,
                  checkpoint: bool, skip: bool, verbose: bool,
-                 txt_row_thd: int, use_eos_token: bool, groupsize: int,
+                 txt_row_thd: int, use_eos_token: bool, groupsize: int, v1: bool,
                  local_rank: int, flash_attention: bool, backend: str
                  ):
         """
@@ -46,7 +46,8 @@ class Finetune4bConfig:
             verbose (bool): If output log of training
             txt_row_thd (int): Custom row thd for txt file
             use_eos_token (bool): Use Eos token instead of padding with 0
-            groupsize (int): Group size of V2 model, use -1 to load V1 model
+            groupsize (int): Group size of V2 model
+            v1 (bool): v1 model flag
             local_rank (int): local rank if using torch.distributed.launch
             flash_attention (bool): Enables flash attention
         """
@@ -85,6 +86,7 @@ class Finetune4bConfig:
         if self.ddp:
             self.gradient_accumulation_steps = self.gradient_accumulation_steps // self.world_size
         self.groupsize = groupsize
+        self.v1 = v1
         self.flash_attention = flash_attention
         self.backend = backend
 
@@ -99,5 +101,5 @@ class Finetune4bConfig:
         f"{self.logging_steps=}\n" +\
         f"{self.checkpoint=}\n{self.skip=}\n" +\
         f"{self.world_size=}\n{self.ddp=}\n{self.device_map=}\n" +\
-        f"{self.groupsize=}\n{self.backend=}\n"
+        f"{self.groupsize=}\n{self.v1=}\n{self.backend=}\n"
         return s.replace("self.", "")
