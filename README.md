@@ -33,6 +33,7 @@ It's fast on a 3070 Ti mobile.  Uses 5-6 GB of GPU RAM.
 * Added monkey patch for text generation webui for fixing initial eos token issue.
 * Added Flash attention support. (Use --flash-attention)
 * Added Triton backend to support model using groupsize and act-order. (Use --backend=triton)
+* Added g_idx support in cuda backend (need recompile cuda kernel)
 
 # Requirements
 gptq-for-llama <br>
