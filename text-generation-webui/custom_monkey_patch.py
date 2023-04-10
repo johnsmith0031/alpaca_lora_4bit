@@ -16,7 +16,7 @@ def load_model_llama(*args, **kwargs):
     print("Loading {} ...".format(model_path))
     t0 = time.time()
     
-    model, tokenizer = load_llama_model_4bit_low_ram(config_path, model_path, groupsize=-1)
+    model, tokenizer = load_llama_model_4bit_low_ram(config_path, model_path, groupsize=-1, is_v1_model=True)
     
     model = PeftModel.from_pretrained(model, lora_path, device_map={'': 0}, torch_dtype=torch.float32)
     print('{} Lora Applied.'.format(lora_path))
