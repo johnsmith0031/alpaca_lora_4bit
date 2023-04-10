@@ -24,7 +24,7 @@ def load_model_llama(*args, **kwargs):
     print('Apply auto switch and half')
     for n, m in model.named_modules():
         if isinstance(m, Autograd4bitQuantLinear) or isinstance(m, Linear4bitLt):
-            if m.groupsize == -1:
+            if m.is_v1_model:
                 m.zeros = m.zeros.half()
             m.scales = m.scales.half()
             m.bias = m.bias.half()
