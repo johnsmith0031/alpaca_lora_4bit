@@ -6,7 +6,7 @@ Made some adjust for the code in peft and gptq for llama, and make it possible f
 ```
 git clone https://github.com/johnsmith0031/alpaca_lora_4bit.git
 cd alpaca_lora_4bit
-DOCCKER_BUILDKIT=1 docker build -t alpaca_lora_4bit . # build step can take 12 min
+DOCKER_BUILDKIT=1 docker build -t alpaca_lora_4bit . # build step can take 12 min
 docker run --gpus=all -p 7860:7860 alpaca_lora_4bit
 ```
 Point your browser to http://localhost:7860
