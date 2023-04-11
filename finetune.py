@@ -87,7 +87,7 @@ else:
 print('Fitting 4bit scales and zeros to half')
 for n, m in model.named_modules():
     if '4bit' in str(type(m)):
-        if m.groupsize == -1:
+        if m.is_v1_model:
             m.zeros = m.zeros.half()
         m.scales = m.scales.half()
 
