@@ -37,7 +37,6 @@ import sys
 
 import peft
 import peft.tuners.lora
-assert peft.tuners.lora.is_gptq_available()
 
 import torch
 import transformers
