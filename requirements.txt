@@ -4,8 +4,7 @@ bitsandbytes
 datasets
 sentencepiece
 safetensors
-flash-attn
-triton
+einops
 colorama
 git+https://github.com/huggingface/transformers.git
 git+https://github.com/sterlind/GPTQ-for-LLaMa.git@lora_4bit

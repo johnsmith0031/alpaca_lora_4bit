@@ -23,6 +23,9 @@ ft_config = get_config()
 if ft_config.flash_attention:
     from monkeypatch.llama_flash_attn_monkey_patch import replace_llama_attn_with_flash_attn
     replace_llama_attn_with_flash_attn()
+elif ft_config.xformers:
+    from monkeypatch.llama_attn_hijack_xformers import hijack_llama_attention
+    hijack_llama_attention()
 
 import autograd_4bit
 if ft_config.backend.lower() == 'triton':

@@ -15,7 +15,7 @@ class Finetune4bConfig:
                  warmup_steps: int, save_steps: int, save_total_limit: int, logging_steps: int,
                  checkpoint: bool, skip: bool, verbose: bool,
                  txt_row_thd: int, use_eos_token: bool, groupsize: int, v1: bool,
-                 local_rank: int, flash_attention: bool, backend: str
+                 local_rank: int, flash_attention: bool, xformers: bool, backend: str
                  ):
         """
         Args:
@@ -50,6 +50,7 @@ class Finetune4bConfig:
             v1 (bool): v1 model flag
             local_rank (int): local rank if using torch.distributed.launch
             flash_attention (bool): Enables flash attention
+            xformers (bool): use xformers or not
         """
         self.dataset = dataset
         self.ds_type = ds_type
@@ -88,6 +89,7 @@ class Finetune4bConfig:
         self.groupsize = groupsize
         self.v1 = v1
         self.flash_attention = flash_attention
+        self.xformers = xformers
         self.backend = backend
 
 

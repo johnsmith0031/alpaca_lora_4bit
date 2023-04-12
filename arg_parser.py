@@ -70,6 +70,7 @@ def parse_commandline():
     
     # Flash Attention
     parser_training.add_argument("--flash_attention", action="store_true", help="enables flash attention, can improve performance and reduce VRAM use")
+    parser_training.add_argument("--xformers", action="store_true", help="enables xformers memory efficient attention, can improve performance and reduce VRAM use")
 
     # Train Backend
     parser_training.add_argument("--backend", type=str, default='cuda', help="Backend to use. Triton or Cuda.")
@@ -111,5 +112,6 @@ def get_config() -> Finetune4bConfig:
         v1=args["v1"],
         local_rank=args["local_rank"],
         flash_attention=args["flash_attention"],
+        xformers=args["xformers"],
         backend=args["backend"],
     )

@@ -8,8 +8,11 @@ from transformers.models.llama.modeling_llama import LlamaConfig, LlamaRotaryEmb
 
 from einops import rearrange
 
-from flash_attn.flash_attn_interface import flash_attn_unpadded_qkvpacked_func
-from flash_attn.bert_padding import unpad_input, pad_input
+try:
+    from flash_attn.flash_attn_interface import flash_attn_unpadded_qkvpacked_func
+    from flash_attn.bert_padding import unpad_input, pad_input
+except ImportError:
+    raise ImportError("Please install flash_attn to use this module")
 
 class LlamaAttention(nn.Module):
     """Multi-headed attention from 'Attention Is All You Need' paper"""
