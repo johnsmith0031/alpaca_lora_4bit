@@ -76,7 +76,7 @@ def switch_backend_to(to_backend):
     elif to_backend == 'triton':
         # detect if AutogradMatmul4bitTriton is defined
         if 'AutogradMatmul4bitTriton' not in globals():
-            raise ValueError('Triton not found. Please install triton_utils.')
+            raise ValueError('Triton not found. Please install triton')
         AutogradMatmul4bit = AutogradMatmul4bitTriton
         backend = 'triton'
         print(Style.BRIGHT + Fore.GREEN + 'Using Triton implementation.')
