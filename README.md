@@ -34,6 +34,8 @@ It's fast on a 3070 Ti mobile.  Uses 5-6 GB of GPU RAM.
 * Added Flash attention support. (Use --flash-attention)
 * Added Triton backend to support model using groupsize and act-order. (Use --backend=triton)
 * Added g_idx support in cuda backend (need recompile cuda kernel)
+* Added xformers support
+* Removed triton, flash-atten from requirements.txt for compatibility
 
 # Requirements
 gptq-for-llama <br>
@@ -102,3 +104,17 @@ python server.py
 
 It seems that we can apply a monkey patch for llama model. To use it, simply download the file from [MonkeyPatch](https://github.com/lm-sys/FastChat/blob/daa9c11080ceced2bd52c3e0027e4f64b1512683/fastchat/train/llama_flash_attn_monkey_patch.py). And also, flash-attention is needed, and currently do not support pytorch 2.0.
 Just add --flash-attention to use it for finetuning.
+
+
+# Xformers
+
+* Install
+```
+pip install xformers
+```
+
+* Usage
+```
+from monkeypatch.llama_attn_hijack_xformers import hijack_llama_attention
+hijack_llama_attention()
+```
