@@ -20,6 +20,9 @@
 from arg_parser import get_config
 ft_config = get_config()
 
+from monkeypatch.peft_tuners_lora_monkey_patch import replace_peft_model_with_gptq_lora_model
+replace_peft_model_with_gptq_lora_model()
+
 if ft_config.flash_attention:
     from monkeypatch.llama_flash_attn_monkey_patch import replace_llama_attn_with_flash_attn
     replace_llama_attn_with_flash_attn()
@@ -37,7 +40,6 @@ import sys
 
 import peft
 import peft.tuners.lora
-assert peft.tuners.lora.is_gptq_available()
 
 import torch
 import transformers
