@@ -3,7 +3,8 @@ import torch
 import autograd_4bit
 from autograd_4bit import load_llama_model_4bit_low_ram, Autograd4bitQuantLinear
 from peft import PeftModel
-from peft.tuners.lora import Linear4bitLt
+from monkeypatch.peft_tuners_lora_monkey_patch import replace_peft_model_with_gptq_lora_model, Linear4bitLt
+replace_peft_model_with_gptq_lora_model()
 
 patch_encode_func = False
 

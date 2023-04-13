@@ -248,7 +248,7 @@ def load_llama_model_4bit_low_ram_and_offload(config_path, model_path, lora_path
 
     if lora_path is not None:
         from peft import PeftModel
-        from peft.tuners.lora import Linear4bitLt
+        from monkeypatch.peft_tuners_lora_monkey_patch import Linear4bitLt
         model = PeftModel.from_pretrained(model, lora_path, device_map={'': 'cpu'}, torch_dtype=torch.float32)
         print(Style.BRIGHT + Fore.GREEN + '{} Lora Applied.'.format(lora_path))
 
