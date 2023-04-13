@@ -14,7 +14,7 @@ print('Fitting 4bit scales and zeros to half')
 model.half()
 for n, m in model.named_modules():
     if isinstance(m, Autograd4bitQuantLinear):
-        if m.groupsize == -1:
+        if m.is_v1_model:
             m.zeros = m.zeros.half()
         m.scales = m.scales.half()
         m.bias = m.bias.half()
