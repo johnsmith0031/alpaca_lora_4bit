@@ -63,7 +63,7 @@ RUN cd text-generation-webui-tmp && python download-model.py samwit/alpaca7b-lor
 
 COPY *.py .
 COPY text-generation-webui text-generation-webui
-COPY monkeypatch .
+COPY monkeypatch text-generation-webui/monkeypatch
 
 RUN mv -f text-generation-webui-tmp/* text-generation-webui/
 
