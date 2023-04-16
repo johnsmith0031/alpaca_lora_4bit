@@ -27,7 +27,7 @@ class AutogradMatmul4bitNotImplemented(torch.autograd.Function):
 
 
 try:
-    import matmul_utils_4bit as mm4b
+    from . import matmul_utils_4bit as mm4b
 
     class AutogradMatmul4bitCuda(torch.autograd.Function):
 
@@ -60,7 +60,7 @@ except ImportError:
 
 
 try:
-    import triton_utils as tu
+    from . import triton_utils as tu
 
 
     class AutogradMatmul4bitTriton(torch.autograd.Function):

@@ -5,7 +5,8 @@ from . import autograd_4bit
 from . import custom_autotune
 from . import Finetune4bConfig
 from . import gradient_checkpointing
-from . import matmul_utils_4bit
 from . import models
 from . import train_data
-from . import triton_utils
+# We don't import these automatically as it is dependent on whether we need cuda or triton
+# from . import matmul_utils_4bit
+# from . import triton_utils
