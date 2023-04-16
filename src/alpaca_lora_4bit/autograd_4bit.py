@@ -1,4 +1,5 @@
-import matmul_utils_4bit as mm4b
+import logging
+
 import torch
 import torch.nn as nn
 import time
@@ -8,33 +9,58 @@ from colorama import init, Fore, Back, Style
 init(autoreset=True)
 
 
-class AutogradMatmul4bitCuda(torch.autograd.Function):
+gptq_backend_loaded = False
+triton_backend_loaded = False
 
+
+class AutogradMatmul4bitNotImplemented(torch.autograd.Function):
     @staticmethod
     @custom_fwd(cast_inputs=torch.float16)
     def forward(ctx, x, qweight, scales, zeros, g_idx, bits, maxq):
-        ctx.save_for_backward(qweight, scales, zeros, g_idx)
-        if g_idx is None:
-            output = mm4b._matmul4bit_v1_recons(x, qweight, scales, zeros)
-        else:
-            output = mm4b._matmul4bit_v2_recons(x, qweight, scales, zeros, g_idx)
-        output = output.clone()
-        return output
+        raise NotImplementedError()
 
     @staticmethod
     @custom_bwd
     def backward(ctx, grad_output):
-        qweight, scales, zeros, g_idx = ctx.saved_tensors
-        if ctx.needs_input_grad[0]:
+        raise NotImplementedError()
+
+
+try:
+    import matmul_utils_4bit as mm4b
+
+    class AutogradMatmul4bitCuda(torch.autograd.Function):
+
+        @staticmethod
+        @custom_fwd(cast_inputs=torch.float16)
+        def forward(ctx, x, qweight, scales, zeros, g_idx, bits, maxq):
+            ctx.save_for_backward(qweight, scales, zeros, g_idx)
             if g_idx is None:
-                grad = mm4b._matmul4bit_v1_recons(grad_output, qweight, scales, zeros, transpose=True)
+                output = mm4b._matmul4bit_v1_recons(x, qweight, scales, zeros)
             else:
-                grad = mm4b._matmul4bit_v2_recons(grad_output, qweight, scales, zeros, g_idx, transpose=True)
-        return grad, None, None, None, None, None, None
+                output = mm4b._matmul4bit_v2_recons(x, qweight, scales, zeros, g_idx)
+            output = output.clone()
+            return output
+
+        @staticmethod
+        @custom_bwd
+        def backward(ctx, grad_output):
+            qweight, scales, zeros, g_idx = ctx.saved_tensors
+            if ctx.needs_input_grad[0]:
+                if g_idx is None:
+                    grad = mm4b._matmul4bit_v1_recons(grad_output, qweight, scales, zeros, transpose=True)
+                else:
+                    grad = mm4b._matmul4bit_v2_recons(grad_output, qweight, scales, zeros, g_idx, transpose=True)
+            return grad, None, None, None, None, None, None
+
+
+    gptq_backend_loaded = True
+except ImportError:
+    print('quant_cuda not found. Please run "pip install alpaca_lora_4bit[cuda]".')
 
 
 try:
     import triton_utils as tu
+
 
     class AutogradMatmul4bitTriton(torch.autograd.Function):
 
@@ -46,7 +72,7 @@ try:
             ctx.bits, ctx.maxq = bits, maxq
             output = output.clone()
             return output
-        
+
         @staticmethod
         @custom_bwd
         def backward(ctx, grad_output):
@@ -57,25 +83,45 @@ try:
             if ctx.needs_input_grad[0]:
                 grad_input = tu.triton_matmul_transpose(grad_output, qweight, scales, qzeros, g_idx, bits, maxq)
             return grad_input, None, None, None, None, None, None
-    
+
+
+    triton_backend_loaded = True
 except ImportError:
     print('Triton not found. Please run "pip install triton".')
 
 
-AutogradMatmul4bit = AutogradMatmul4bitCuda
-backend = 'cuda'
+def is_triton_backend_available():
+    return 'AutogradMatmul4bitTriton' in globals()
+
+
+def is_gptq_backend_available():
+    return 'AutogradMatmul4bitCuda' in globals()
+
+
+AutogradMatmul4bit = AutogradMatmul4bitNotImplemented
+backend = None
+if is_gptq_backend_available():
+    AutogradMatmul4bit = AutogradMatmul4bitCuda
+    backend = 'cuda'
+elif is_triton_backend_available():
+    AutogradMatmul4bit = AutogradMatmul4bitTriton
+    backend = 'triton'
+else:
+    logging.warning("Neither gptq/cuda or triton backends are available.")
 
 
 def switch_backend_to(to_backend):
     global AutogradMatmul4bit
     global backend
     if to_backend == 'cuda':
+        if not is_gptq_backend_available():
+            raise ValueError('gptq_llama not found. Please install gptq_llama')
         AutogradMatmul4bit = AutogradMatmul4bitCuda
         backend = 'cuda'
         print(Style.BRIGHT + Fore.GREEN + 'Using CUDA implementation.')
     elif to_backend == 'triton':
         # detect if AutogradMatmul4bitTriton is defined
-        if 'AutogradMatmul4bitTriton' not in globals():
+        if not is_gptq_backend_available():
             raise ValueError('Triton not found. Please install triton')
         AutogradMatmul4bit = AutogradMatmul4bitTriton
         backend = 'triton'

@@ -10,7 +10,7 @@ from peft.utils import _get_submodules, PeftType
 from torch import nn
 from transformers.pytorch_utils import Conv1D
 
-from autograd_4bit import Autograd4bitQuantLinear
+from alpaca_lora_4bit.autograd_4bit import Autograd4bitQuantLinear
 
 
 class Linear4bitLt(Autograd4bitQuantLinear, LoraLayer):
@@ -77,7 +77,7 @@ class Linear4bitLt(Autograd4bitQuantLinear, LoraLayer):
                     )
                 result += output
             return result
-        
+
         @property
         def weight(self):
             class WeightDeviceClass:

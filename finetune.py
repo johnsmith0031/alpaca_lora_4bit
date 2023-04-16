@@ -16,21 +16,28 @@
         }
     ]
 """
+import os
+import sys
+# set src so alpaca_lora_4bit package is available without installing
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+src_dir = os.path.join(project_root, "src")
+sys.path.insert(0, src_dir)
+
 # Early load config to replace attn if needed
-from arg_parser import get_config
+from alpaca_lora_4bit.arg_parser import get_config
 ft_config = get_config()
 
-from monkeypatch.peft_tuners_lora_monkey_patch import replace_peft_model_with_gptq_lora_model
+from alpaca_lora_4bit.monkeypatch.peft_tuners_lora_monkey_patch import replace_peft_model_with_gptq_lora_model
 replace_peft_model_with_gptq_lora_model()
 
 if ft_config.flash_attention:
-    from monkeypatch.llama_flash_attn_monkey_patch import replace_llama_attn_with_flash_attn
+    from alpaca_lora_4bit.monkeypatch.llama_flash_attn_monkey_patch import replace_llama_attn_with_flash_attn
     replace_llama_attn_with_flash_attn()
 elif ft_config.xformers:
-    from monkeypatch.llama_attn_hijack_xformers import hijack_llama_attention
+    from alpaca_lora_4bit.monkeypatch.llama_attn_hijack_xformers import hijack_llama_attention
     hijack_llama_attention()
 
-import autograd_4bit
+from alpaca_lora_4bit import autograd_4bit
 if ft_config.backend.lower() == 'triton':
     autograd_4bit.switch_backend_to('triton')
 else:
@@ -44,11 +51,11 @@ import peft.tuners.lora
 
 import torch
 import transformers
-from autograd_4bit import load_llama_model_4bit_low_ram
+from alpaca_lora_4bit.autograd_4bit import load_llama_model_4bit_low_ram
 from peft import LoraConfig, get_peft_model, get_peft_model_state_dict, PeftModel, set_peft_model_state_dict
 
 # ! Config
-import train_data
+from alpaca_lora_4bit import train_data
 
 # * Show loaded parameters
 if ft_config.local_rank == 0:
@@ -120,7 +127,7 @@ if not ft_config.skip:
     # Use gradient checkpointing
     if ft_config.gradient_checkpointing:
         print('Applying gradient checkpointing ...')
-        from gradient_checkpointing import apply_gradient_checkpointing
+        from alpaca_lora_4bit.gradient_checkpointing import apply_gradient_checkpointing
         apply_gradient_checkpointing(model, checkpoint_ratio=ft_config.gradient_checkpointing_ratio)
 
     # Disable Trainer's DataParallel for multigpu

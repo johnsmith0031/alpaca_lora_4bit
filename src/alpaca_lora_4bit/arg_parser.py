@@ -1,6 +1,6 @@
 import os
 import argparse
-from Finetune4bConfig import Finetune4bConfig
+from .Finetune4bConfig import Finetune4bConfig
 
 def parse_commandline():
     parser = argparse.ArgumentParser(
@@ -8,12 +8,12 @@ def parse_commandline():
         description="Produce LoRA in 4bit training",
         usage="%(prog)s [config] [training]\n\nAll arguments are optional"
     )
-    
+
     parser.add_argument("dataset", nargs="?",
-        default="./dataset.json", 
+        default="./dataset.json",
         help="Path to dataset file. Default: %(default)s"
     )
-    
+
     parser_config = parser.add_argument_group("config")
     parser_training = parser.add_argument_group("training")
 
@@ -60,14 +60,14 @@ def parse_commandline():
     # Data args
     parser_training.add_argument("--txt_row_thd", default=-1, type=int, help="Custom thd for txt rows.")
     parser_training.add_argument("--use_eos_token", default=1, type=int, help="Use eos token instead if padding with 0. enable with 1, disable with 0.")
-    
+
     # V2 model support
     parser_training.add_argument("--groupsize", type=int, default=-1, help="Groupsize of v2 model")
     parser_training.add_argument("--v1", action="store_true", help="Use V1 model")
 
     # Multi GPU Support
     parser_training.add_argument("--local_rank", type=int, default=0, help="local rank if using torch.distributed.launch")
-    
+
     # Flash Attention
     parser_training.add_argument("--flash_attention", action="store_true", help="enables flash attention, can improve performance and reduce VRAM use")
     parser_training.add_argument("--xformers", action="store_true", help="enables xformers memory efficient attention, can improve performance and reduce VRAM use")
@@ -81,20 +81,20 @@ def parse_commandline():
 def get_config() -> Finetune4bConfig:
     args = parse_commandline()
     return Finetune4bConfig(
-        dataset=args["dataset"], 
-        ds_type=args["ds_type"], 
-        lora_out_dir=args["lora_out_dir"], 
+        dataset=args["dataset"],
+        ds_type=args["ds_type"],
+        lora_out_dir=args["lora_out_dir"],
         lora_apply_dir=args["lora_apply_dir"],
         resume_checkpoint=args["resume_checkpoint"],
         llama_q4_config_dir=args["llama_q4_config_dir"],
         llama_q4_model=args["llama_q4_model"],
         mbatch_size=args["mbatch_size"],
         batch_size=args["batch_size"],
-        epochs=args["epochs"], 
+        epochs=args["epochs"],
         lr=args["lr"],
         cutoff_len=args["cutoff_len"],
-        lora_r=args["lora_r"], 
-        lora_alpha=args["lora_alpha"], 
+        lora_r=args["lora_r"],
+        lora_alpha=args["lora_alpha"],
         lora_dropout=args["lora_dropout"],
         val_set_size=args["val_set_size"],
         gradient_checkpointing=args["grad_chckpt"],

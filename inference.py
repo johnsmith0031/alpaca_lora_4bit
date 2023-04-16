@@ -1,9 +1,14 @@
 import os
 import sys
+# set src so alpaca_lora_4bit package is available without installing
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+src_dir = os.path.join(project_root, "src")
+sys.path.insert(0, src_dir)
+
 import time
 import torch
-from autograd_4bit import load_llama_model_4bit_low_ram, Autograd4bitQuantLinear
-from monkeypatch.peft_tuners_lora_monkey_patch import replace_peft_model_with_gptq_lora_model
+from alpaca_lora_4bit.autograd_4bit import load_llama_model_4bit_low_ram, Autograd4bitQuantLinear
+from alpaca_lora_4bit.monkeypatch.peft_tuners_lora_monkey_patch import replace_peft_model_with_gptq_lora_model
 replace_peft_model_with_gptq_lora_model()
 
 config_path = './llama-13b-4bit/'
