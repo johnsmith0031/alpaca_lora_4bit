@@ -27,8 +27,8 @@ sys.path.insert(0, src_dir)
 from alpaca_lora_4bit.arg_parser import get_config
 ft_config = get_config()
 
-from alpaca_lora_4bit.monkeypatch.peft_tuners_lora_monkey_patch import replace_peft_model_with_gptq_lora_model
-replace_peft_model_with_gptq_lora_model()
+from alpaca_lora_4bit.monkeypatch.peft_tuners_lora_monkey_patch import replace_peft_model_with_int4_lora_model
+replace_peft_model_with_int4_lora_model()
 
 if ft_config.flash_attention:
     from alpaca_lora_4bit.monkeypatch.llama_flash_attn_monkey_patch import replace_llama_attn_with_flash_attn

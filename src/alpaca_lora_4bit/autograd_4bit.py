@@ -6,6 +6,7 @@ import time
 import math
 from torch.cuda.amp import custom_bwd, custom_fwd
 from colorama import init, Fore, Back, Style
+from huggingface_hub.utils._validators import HFValidationError
 init(autoreset=True)
 
 
@@ -257,7 +258,10 @@ def load_llama_model_4bit_low_ram(config_path, model_path, groupsize=-1, half=Fa
     if half:
         model_to_half(model)
 
-    tokenizer = LlamaTokenizer.from_pretrained(config_path)
+    try:
+        tokenizer = LlamaTokenizer.from_pretrained(config_path)
+    except HFValidationError as e:
+        tokenizer = LlamaTokenizer.from_pretrained(model)
     tokenizer.truncation_side = 'left'
 
     print(Style.BRIGHT + Fore.GREEN + f"Loaded the model in {(time.time()-t0):.2f} seconds.")
@@ -294,7 +298,7 @@ def load_llama_model_4bit_low_ram_and_offload(config_path, model_path, lora_path
 
     if lora_path is not None:
         from peft import PeftModel
-        from monkeypatch.peft_tuners_lora_monkey_patch import Linear4bitLt
+        from .models import Linear4bitLt
         model = PeftModel.from_pretrained(model, lora_path, device_map={'': 'cpu'}, torch_dtype=torch.float32)
         print(Style.BRIGHT + Fore.GREEN + '{} Lora Applied.'.format(lora_path))
 
