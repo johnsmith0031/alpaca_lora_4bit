@@ -12,8 +12,8 @@ setup(
     name='alpaca_lora_4bit',
     version='0.1',
     description='Alpaca LoRA 4-bit',
-    package_dir={'': 'src'},
-    packages=find_packages(),
+    package_dir={'alpaca_lora_4bit': 'src/alpaca_lora_4bit'},
+    packages=['alpaca_lora_4bit'],
     install_requires=install_requires,
     extras_require={
         'cuda': 'gptq_llama @ git+https://github.com/sterlind/GPTQ-for-LLaMa.git@lora_4bit',
