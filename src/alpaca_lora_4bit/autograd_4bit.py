@@ -121,7 +121,7 @@ def switch_backend_to(to_backend):
         print(Style.BRIGHT + Fore.GREEN + 'Using CUDA implementation.')
     elif to_backend == 'triton':
         # detect if AutogradMatmul4bitTriton is defined
-        if not is_gptq_backend_available():
+        if not is_triton_backend_available():
             raise ValueError('Triton not found. Please install triton')
         AutogradMatmul4bit = AutogradMatmul4bitTriton
         backend = 'triton'
