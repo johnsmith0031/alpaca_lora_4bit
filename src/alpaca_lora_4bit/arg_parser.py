@@ -1,6 +1,6 @@
 import os
 import argparse
-from .Finetune4bConfig import Finetune4bConfig
+from Finetune4bConfig import Finetune4bConfig
 
 def parse_commandline():
     parser = argparse.ArgumentParser(
