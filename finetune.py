@@ -84,7 +84,7 @@ else:
         else:
             device_map = {'': 0}
     print('Device map for lora:', device_map)
-    model = PeftModel.from_pretrained(model, ft_config.lora_apply_dir, device_map=device_map, torch_dtype=torch.float32)
+    model = PeftModel.from_pretrained(model, ft_config.lora_apply_dir, device_map=device_map, torch_dtype=torch.float32, is_trainable=True)
     print(ft_config.lora_apply_dir, 'loaded')
 
 
