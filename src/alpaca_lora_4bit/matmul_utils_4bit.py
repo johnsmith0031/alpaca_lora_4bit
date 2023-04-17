@@ -3,7 +3,7 @@ import logging
 import torch
 import numpy as np
 try:
-    from gptq_llama import quant_cuda
+    from alpaca_lora_4bit import quant_cuda
 except (ImportError, ModuleNotFoundError) as e:
     logging.exception("Please run: `pip install alpaca_lora_4bit[cuda]`")
     raise e

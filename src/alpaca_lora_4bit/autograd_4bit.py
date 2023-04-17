@@ -116,7 +116,7 @@ def switch_backend_to(to_backend):
     global backend
     if to_backend == 'cuda':
         if not is_gptq_backend_available():
-            raise ValueError('gptq_llama not found. Please install gptq_llama')
+            raise ValueError('quant_cuda not found. Please reinstall with pip install .')
         AutogradMatmul4bit = AutogradMatmul4bitCuda
         backend = 'cuda'
         print(Style.BRIGHT + Fore.GREEN + 'Using CUDA implementation.')
