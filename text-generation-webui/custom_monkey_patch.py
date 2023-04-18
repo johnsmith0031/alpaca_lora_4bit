@@ -3,7 +3,8 @@ import torch
 import autograd_4bit
 from autograd_4bit import load_llama_model_4bit_low_ram, Autograd4bitQuantLinear
 from peft import PeftModel
-from monkeypatch.peft_tuners_lora_monkey_patch import replace_peft_model_with_int4_lora_model, Linear4bitLt
+from monkeypatch.peft_tuners_lora_monkey_patch import replace_peft_model_with_int4_lora_model
+from models import Linear4bitLt
 replace_peft_model_with_int4_lora_model()
 
 patch_encode_func = False
@@ -35,9 +36,9 @@ def load_model_llama(*args, **kwargs):
     return model, tokenizer
 
 # Monkey Patch
-from modules import models
+from modules import models as modelz
 from modules import shared
-models.load_model = load_model_llama
+modelz.load_model = load_model_llama
 shared.args.model = 'llama-13b-4bit'
 shared.settings['name1'] = 'You'
 shared.settings['name2'] = 'Assistant'
