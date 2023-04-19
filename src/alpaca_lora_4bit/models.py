@@ -1,7 +1,6 @@
 import re
 import torch
 import warnings
-import bitsandbytes as bnb
 
 from peft.tuners import lora
 from peft.tuners.lora import is_bnb_available, Linear, Linear8bitLt, LoraLayer
