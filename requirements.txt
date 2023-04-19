@@ -1,6 +1,5 @@
 torch
 accelerate
-bitsandbytes
 datasets
 sentencepiece
 safetensors
