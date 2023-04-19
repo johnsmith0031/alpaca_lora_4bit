@@ -1,4 +1,3 @@
-import math
 import re
 import torch
 import warnings
@@ -6,17 +5,16 @@ import bitsandbytes as bnb
 
 from peft.tuners import lora
 from peft.tuners.lora import is_bnb_available, Linear, Linear8bitLt, LoraLayer
-from peft.utils import _get_submodules, PeftType
-from torch import nn
+from peft.utils import _get_submodules
 from transformers.pytorch_utils import Conv1D
 
-from autograd_4bit import Autograd4bitQuantLinear
+from alpaca_lora_4bit.autograd_4bit import Autograd4bitQuantLinear
 
 
 class Linear4bitLt(Autograd4bitQuantLinear, LoraLayer):
 
-        # Lora implemented in a dense layer
-        def __init__(
+    # Lora implemented in a dense layer
+    def __init__(
             self,
             adapter_name,
             in_features,
@@ -27,62 +25,62 @@ class Linear4bitLt(Autograd4bitQuantLinear, LoraLayer):
             lora_alpha: int = 1,
             lora_dropout: float = 0.0,
             **kwargs,
-        ):
-            Autograd4bitQuantLinear.__init__(
-                self,
-                in_features,
-                out_features,
-                groupsize,
-                is_v1_model
-            )
-            LoraLayer.__init__(self, in_features=in_features, out_features=out_features)
+    ):
+        Autograd4bitQuantLinear.__init__(
+            self,
+            in_features,
+            out_features,
+            groupsize,
+            is_v1_model
+        )
+        LoraLayer.__init__(self, in_features=in_features, out_features=out_features)
 
-            # Freezing the pre-trained weight matrix
-            self.qweight.requires_grad = False
-            self.scales.requires_grad = False
-            if self.is_v1_model:
-                self.zeros.requires_grad = False
-            else:
-                self.qzeros.requires_grad = False
-                self.g_idx.requires_grad = False
-            self.bias.requires_grad = False
+        # Freezing the pre-trained weight matrix
+        self.qweight.requires_grad = False
+        self.scales.requires_grad = False
+        if self.is_v1_model:
+            self.zeros.requires_grad = False
+        else:
+            self.qzeros.requires_grad = False
+            self.g_idx.requires_grad = False
+        self.bias.requires_grad = False
 
-            init_lora_weights = kwargs.pop("init_lora_weights", True)
-            self.update_layer(adapter_name, r, lora_alpha, lora_dropout, init_lora_weights)
-            self.active_adapter = adapter_name
+        init_lora_weights = kwargs.pop("init_lora_weights", True)
+        self.update_layer(adapter_name, r, lora_alpha, lora_dropout, init_lora_weights)
+        self.active_adapter = adapter_name
 
-        def forward(self, x: torch.Tensor):
-            result = super().forward(x)
+    def forward(self, x: torch.Tensor):
+        result = super().forward(x)
 
-            if self.disable_adapters or self.active_adapter not in self.lora_A.keys():
-                return result
-            elif self.r[self.active_adapter] > 0:
-                if not torch.is_autocast_enabled():
-                    expected_dtype = result.dtype
+        if self.disable_adapters or self.active_adapter not in self.lora_A.keys():
+            return result
+        elif self.r[self.active_adapter] > 0:
+            if not torch.is_autocast_enabled():
+                expected_dtype = result.dtype
 
-                    if x.dtype != torch.float32:
-                        x = x.float()
-                    output = (
+                if x.dtype != torch.float32:
+                    x = x.float()
+                output = (
                         self.lora_B[self.active_adapter](
                             self.lora_A[self.active_adapter](self.lora_dropout[self.active_adapter](x))
                         ).to(expected_dtype)
                         * self.scaling[self.active_adapter]
-                    )
-                else:
-                    output = (
+                )
+            else:
+                output = (
                         self.lora_B[self.active_adapter](
                             self.lora_A[self.active_adapter](self.lora_dropout[self.active_adapter](x))
                         )
                         * self.scaling[self.active_adapter]
-                    )
-                result += output
-            return result
-        
-        @property
-        def weight(self):
-            class WeightDeviceClass:
-                device = self.qweight.device
-            return WeightDeviceClass()
+                )
+            result += output
+        return result
+
+    @property
+    def weight(self):
+        class WeightDeviceClass:
+            device = self.qweight.device
+        return WeightDeviceClass()
 
 
 class GPTQLoraModel(lora.LoraModel):
@@ -200,8 +198,3 @@ class GPTQLoraModel(lora.LoraModel):
             for name, module in new_module.named_modules():
                 if "lora_" in name:
                     module.to(old_module.weight.device)
-
-
-def replace_peft_model_with_gptq_lora_model():
-    import peft.peft_model
-    peft.peft_model.PEFT_TYPE_TO_MODEL_MAPPING[PeftType.LORA] = GPTQLoraModel

@@ -6,7 +6,7 @@ FROM nvidia/cuda:11.7.0-devel-ubuntu22.04 AS builder
 
 RUN apt-get update && apt-get install -y python3 python3-pip git
 
-RUN pip3 install --upgrade pip 
+RUN pip3 install --upgrade pip
 
 # Some of the requirements expect some python packages in their setup.py, just install them first.
 RUN --mount=type=cache,target=/root/.cache/pip pip install --user torch==2.0.0
@@ -61,14 +61,14 @@ RUN cd text-generation-webui-tmp && python download-model.py --text-only decapod
 # Get LoRA
 RUN cd text-generation-webui-tmp && python download-model.py samwit/alpaca7b-lora && mv loras/samwit_alpaca7b-lora ../alpaca7b_lora
 
-COPY *.py .
+COPY src src
 COPY text-generation-webui text-generation-webui
-COPY monkeypatch text-generation-webui/monkeypatch
+COPY src/alpaca_lora_4bit/monkeypatch text-generation-webui/monkeypatch
 
 RUN mv -f text-generation-webui-tmp/* text-generation-webui/
 
 # Symlink for monkeypatch
-RUN cd text-generation-webui && ln -s ../autograd_4bit.py ./autograd_4bit.py && ln -s ../matmul_utils_4bit.py .
+RUN cd text-generation-webui && ln -s ../src/alpaca_lora_4bit/autograd_4bit.py ./autograd_4bit.py && ln -s ../src/alpaca_lora_4bit/matmul_utils_4bit.py . && ln -s ../src/alpaca_lora_4bit/models.py .
 
 # Swap to the 7bn parameter model
 RUN sed -i 's/llama-13b-4bit/llama-7b-4bit/g' text-generation-webui/custom_monkey_patch.py && sed -i 's/alpaca13b_lora/alpaca7b_lora/g' text-generation-webui/custom_monkey_patch.py

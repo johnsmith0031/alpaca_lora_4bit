@@ -6,6 +6,5 @@ sentencepiece
 safetensors
 einops
 colorama
-git+https://github.com/huggingface/peft.git@70af02a2bca5a63921790036b2c9430edf4037e2
-git+https://github.com/huggingface/transformers.git
-git+https://github.com/sterlind/GPTQ-for-LLaMa.git@lora_4bit
+peft @ git+https://github.com/huggingface/peft.git@70af02a2bca5a63921790036b2c9430edf4037e2
+transformers @ git+https://github.com/huggingface/transformers.git
