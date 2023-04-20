@@ -61,7 +61,7 @@ RUN cd text-generation-webui-tmp && python download-model.py --text-only decapod
 # Get LoRA
 RUN cd text-generation-webui-tmp && python download-model.py samwit/alpaca7b-lora && mv loras/samwit_alpaca7b-lora ../alpaca7b_lora
 
-COPY src .
+COPY src src
 COPY text-generation-webui text-generation-webui
 COPY src/alpaca_lora_4bit/monkeypatch text-generation-webui/monkeypatch
 
