@@ -15,7 +15,9 @@ RUN --mount=type=cache,target=/root/.cache/pip pip install --user semantic-versi
 # The docker build environment has trouble detecting CUDA version, build for all reasonable archs
 ENV TORCH_CUDA_ARCH_LIST="6.0 6.1 7.0 7.5 8.0 8.6"
 COPY requirements.txt requirements.txt
-RUN --mount=type=cache,target=/root/.cache pip install --user -r requirements.txt
+COPY setup.py setup.py
+COPY src src
+RUN --mount=type=cache,target=/root/.cache pip install --user .
 
 # -------------------------------
 
