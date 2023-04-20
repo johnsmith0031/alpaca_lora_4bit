@@ -17,8 +17,12 @@ It's fast on a 3070 Ti mobile.  Uses 5-6 GB of GPU RAM.
 ![](alpaca_lora_4bit_penguin_fact.gif)
 
 # Development
-* Install Manual by s4rduk4r: https://github.com/s4rduk4r/alpaca_lora_4bit_readme/blob/main/README.md (**NOTE:** don't use the install script, use the requirements.txt instead.)
+* Install Manual by s4rduk4r: https://github.com/s4rduk4r/alpaca_lora_4bit_readme/blob/main/README.md
 * Also Remember to create a venv if you do not want the packages be overwritten.
+* For those who want to use pip installable version:
+```
+pip install git+https://github.com/johnsmith0031/alpaca_lora_4bit@winglian-setup_pip
+```
 
 # Update Logs
 * Resolved numerically unstable issue
@@ -36,6 +40,8 @@ It's fast on a 3070 Ti mobile.  Uses 5-6 GB of GPU RAM.
 * Added g_idx support in cuda backend (need recompile cuda kernel)
 * Added xformers support
 * Removed triton, flash-atten from requirements.txt for compatibility
+* Removed bitsandbytes from requirements
+* Added pip installable branch based on winglian's PR
 
 # Requirements
 gptq-for-llama <br>
