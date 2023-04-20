@@ -1,5 +1,9 @@
 # Alpaca Lora 4bit
 Made some adjust for the code in peft and gptq for llama, and make it possible for lora finetuning with a 4 bits base model. The same adjustment can be made for 2, 3 and 8 bits.
+* For those who want to use pip installable version:
+```
+pip install git+https://github.com/johnsmith0031/alpaca_lora_4bit@winglian-setup_pip
+```
 
 ## Quick start for running the chat UI
 
@@ -19,10 +23,6 @@ It's fast on a 3070 Ti mobile.  Uses 5-6 GB of GPU RAM.
 # Development
 * Install Manual by s4rduk4r: https://github.com/s4rduk4r/alpaca_lora_4bit_readme/blob/main/README.md
 * Also Remember to create a venv if you do not want the packages be overwritten.
-* For those who want to use pip installable version:
-```
-pip install git+https://github.com/johnsmith0031/alpaca_lora_4bit@winglian-setup_pip
-```
 
 # Update Logs
 * Resolved numerically unstable issue
@@ -49,32 +49,37 @@ peft<br>
 The specific version is inside requirements.txt<br>
 
 # Install
-~copy files from GPTQ-for-LLaMa into GPTQ-for-LLaMa path and re-compile cuda extension~<br>
-~copy files from peft/tuners/lora.py to peft path, replace it~<br>
-
-**NOTE:** Install scripts are no longer needed! requirements.txt now pulls from forks with the necessary patches.
 
 ```
 pip install -r requirements.txt
 ```
 
 # Finetune
-~The same finetune script from https://github.com/tloen/alpaca-lora can be used.~<br>
 
-After installation, this script can be used:
-GPTQv1:
+After installation, this script can be used. Use --v1 flag for v1 model.
 
 ```
-python finetune.py
-```
-or
-```
-GPTQ_VERSION=1 python finetune.py
-```
-
-GPTQv2:
-```
-GPTQ_VERSION=2 python finetune.py
+python finetune.py ./data.txt \
+    --ds_type=txt \
+    --lora_out_dir=./test/ \
+    --llama_q4_config_dir=./llama-7b-4bit/ \
+    --llama_q4_model=./llama-7b-4bit.pt \
+    --mbatch_size=1 \
+    --batch_size=2 \
+    --epochs=3 \
+    --lr=3e-4 \
+    --cutoff_len=256 \
+    --lora_r=8 \
+    --lora_alpha=16 \
+    --lora_dropout=0.05 \
+    --warmup_steps=5 \
+    --save_steps=50 \
+    --save_total_limit=3 \
+    --logging_steps=5 \
+    --groupsize=-1 \
+    --v1 \
+    --xformers \
+    --backend=cuda
 ```
 
 # Inference
@@ -95,8 +100,6 @@ git clone https://github.com/oobabooga/text-generation-webui.git
 Open server.py and insert a line at the beginning
 ```
 import custom_monkey_patch # apply monkey patch
-import gc
-import io
 ...
 ```
 
@@ -105,6 +108,12 @@ Use the command to run
 ```
 python server.py
 ```
+
+## monkey patch inside webui
+
+Currently the webui support using this repo by the monkeypatch inside it.<br>
+You can simply clone this repo to ./repositories/ in the path of text generation webui.
+
 
 # Flash Attention
 
