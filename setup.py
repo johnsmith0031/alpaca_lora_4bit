@@ -17,7 +17,7 @@ quant_cuda_module = CUDAExtension(
 
 setup(
     name='alpaca_lora_4bit',
-    version='0.1',
+    version='0.1.1',
     description='Alpaca LoRA 4-bit',
     package_dir={'alpaca_lora_4bit': 'src/alpaca_lora_4bit'},
     packages=['alpaca_lora_4bit', 'alpaca_lora_4bit.monkeypatch', 'alpaca_lora_4bit.quant_cuda'],
