@@ -30,6 +30,29 @@ __device__ double atomicAdd(
 }
 #endif
 
+#ifdef __CUDA_ARCH__
+#if __CUDA_ARCH__ < 700
+// adapted from https://github.com/torch/cutorch/blob/master/lib/THC/THCAtomics.cuh
+__device__ __forceinline__ void atomicAdd(c10::Half* address, c10::Half val) {
+    unsigned int *address_as_ui = reinterpret_cast<unsigned int *>(reinterpret_cast<char *>(address) - (reinterpret_cast<size_t>(address) & 2));
+    unsigned int old = *address_as_ui;
+    unsigned int assumed;
+
+    do {
+        assumed = old;
+        unsigned short hsum = reinterpret_cast<size_t>(address) & 2 ? (old >> 16) : (old & 0xffff);
+        hsum += val;
+        old = reinterpret_cast<size_t>(address) & 2
+                 ? (old & 0xffff) | (hsum << 16)
+                 : (old & 0xffff0000) | hsum;
+        old = atomicCAS(address_as_ui, assumed, old);
+
+    // Note: uses integer comparison to avoid hang in case of NaN (since NaN != NaN)
+    } while (assumed != old);
+}
+#endif
+#endif
+
 __device__ inline int as_int(int i) {
   return *reinterpret_cast<int*>(&i);
 }
@@ -122,10 +145,11 @@ __global__ void VecQuant3MatMulKernelFaster(
     int groupsize
 );
 
+template <typename scalar_t>
 __global__ void VecQuant4MatMulKernelFaster(
     const  half2* __restrict__ vec,
     const    int* __restrict__ mat,
-           float* __restrict__ mul,
+           scalar_t* __restrict__ mul,
     const  float* __restrict__ scales,
     const    int* __restrict__ zeros,
     const    int* __restrict__ g_idx,
@@ -852,21 +876,26 @@ void vecquant4matmul_faster_cuda(
   );
   dim3 threads(BLOCKWIDTH);
 
-  VecQuant4MatMulKernelFaster<<<blocks, threads>>>(
-    (half2*) vec.data_ptr(),
-    mat.data_ptr<int>(),
-    mul.data_ptr<float>(),
-    scales.data_ptr<float>(),
-    zeros.data_ptr<int>(),
-    g_idx.data_ptr<int>(),
-    batch, vec_height, height, width, zero_width
-  );
+  AT_DISPATCH_SWITCH(vec.type(), "vecquant4matmul_faster_cuda",
+    AT_DISPATCH_CASE(at::ScalarType::Half, ([&] {
+      VecQuant4MatMulKernelFaster<<<blocks, threads>>>(
+        (half2*) vec.data<scalar_t>(),
+        mat.data<int>(),
+        mul.data<scalar_t>(),
+        scales.data_ptr<float>(),
+        zeros.data_ptr<int>(),
+        g_idx.data_ptr<int>(),
+        batch, vec_height, height, width, zero_width
+      );
+    })
+  ));
 }
 
+template <typename scalar_t>
 __global__ void VecQuant4MatMulKernelFaster(
     const  half2* __restrict__ vec,
     const    int* __restrict__ mat,
-           float* __restrict__ mul,
+           scalar_t* __restrict__ mul,
     const  float* __restrict__ scales,
     const  	 int* __restrict__ zeros,
     const  	 int* __restrict__ g_idx,
@@ -925,7 +954,9 @@ __global__ void VecQuant4MatMulKernelFaster(
     res += __half2float(res2.x) + __half2float(res2.y);
   }
 
-  atomicAdd(&mul[b * width + w], res);
+  __half* mul2 = (__half*)mul;
+  __half res_fp16 = __float2half(res);
+  atomicAdd(&mul2[b * width + w], res_fp16);
 }
 
 template <typename scalar_t>

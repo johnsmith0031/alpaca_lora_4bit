@@ -154,6 +154,7 @@ class Autograd4bitQuantLinear(nn.Module):
         groupsize = groupsize if groupsize != -1 else in_features
         self.groupsize = groupsize
         self.is_v1_model = is_v1_model
+        self.disable_bias = True
         if is_v1_model:
             self.register_buffer('zeros', torch.empty((out_features, 1)))
             self.register_buffer('scales', torch.empty((out_features, 1)))
@@ -179,7 +180,8 @@ class Autograd4bitQuantLinear(nn.Module):
             out = matmul4bit_with_backend(x, self.qweight, self.scales,
                                           self.qzeros if not self.is_v1_model else self.zeros,
                                           self.g_idx, self.bits, self.maxq)
-        out += self.bias
+        if not self.disable_bias:
+            out += self.bias
         return out
 
 
@@ -298,7 +300,7 @@ def load_llama_model_4bit_low_ram_and_offload(config_path, model_path, lora_path
 
     if lora_path is not None:
         from peft import PeftModel
-        from .models import Linear4bitLt 
+        from .models import Linear4bitLt
         model = PeftModel.from_pretrained(model, lora_path, device_map={'': 'cpu'}, torch_dtype=torch.float32, is_trainable=True)
         print(Style.BRIGHT + Fore.GREEN + '{} Lora Applied.'.format(lora_path))
 
