@@ -35,16 +35,16 @@ void vecquant3matmul(
 void vecquant4matmul_cuda(
   torch::Tensor vec, torch::Tensor mat, torch::Tensor mul,
   torch::Tensor scales, torch::Tensor zeros,
-  int groupsize
+  torch::Tensor g_idx
 );
 
 void vecquant4matmul(
   torch::Tensor vec, torch::Tensor mat, torch::Tensor mul,
   torch::Tensor scales, torch::Tensor zeros,
-  int groupsize
+  torch::Tensor g_idx
 ) {
   const at::cuda::OptionalCUDAGuard device_guard(device_of(vec));
-  vecquant4matmul_cuda(vec, mat, mul, scales, zeros, groupsize);
+  vecquant4matmul_cuda(vec, mat, mul, scales, zeros, g_idx);
 }
 
 void vecquant8matmul_cuda(
@@ -145,6 +145,19 @@ void vecquant4matmul_v1_faster(
   vecquant4matmul_v1_faster_cuda(vec, mat, mul, scales, zeros);
 }
 
+void vecquant4matmul_seq_v2_cuda(
+  torch::Tensor vec, torch::Tensor mat_t, torch::Tensor mul,
+  torch::Tensor scales_t, torch::Tensor zeros_t, torch::Tensor g_idx
+);
+
+void vecquant4matmul_seq_v2(
+  torch::Tensor vec, torch::Tensor mat_t, torch::Tensor mul,
+  torch::Tensor scales_t, torch::Tensor zeros_t, torch::Tensor g_idx
+) {
+  const at::cuda::OptionalCUDAGuard device_guard(device_of(vec));
+  vecquant4matmul_seq_v2_cuda(vec, mat_t, mul, scales_t, zeros_t, g_idx);
+}
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("vecquant2matmul", &vecquant2matmul, "Vector 2-bit Quantized Matrix Multiplication (CUDA)");
   m.def("vecquant3matmul", &vecquant3matmul, "Vector 3-bit Quantized Matrix Multiplication (CUDA)");
@@ -160,4 +173,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // Reconstruction Kernel
   m.def("vecquant4recons_v1", &vecquant4recons_v1, "Vector 4-bit Quantized Matrix Reconstruction (CUDA)");
   m.def("vecquant4recons_v2", &vecquant4recons_v2, "Vector 4-bit Quantized Matrix Reconstruction (CUDA) with group-size support");
+
+  // Seq Kernel (Experimental)
+  m.def("vecquant4matmul_seq_v2", &vecquant4matmul_seq_v2, "Vector 4-bit Quantized Matrix Multiplication (CUDA), sequential version, v2 support");
 }

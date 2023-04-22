@@ -71,12 +71,12 @@ __global__ void VecQuant4MatMulKernel(
            scalar_t* __restrict__ mul,
     const  scalar_t* __restrict__ scales,
     const  	int* __restrict__ zeros,
+    const  	int* __restrict__ g_idx,
     int batch,
     int vec_height,
     int height,
     int width,
-    int zero_width,
-    int groupsize
+    int zero_width
 );
 
 template <typename scalar_t>
@@ -406,7 +406,7 @@ void vecquant4matmul_cuda(
   torch::Tensor mul,
   torch::Tensor scales,
   torch::Tensor zeros,
-  int groupsize
+  torch::Tensor g_idx
 ) {
   int batch = vec.size(0);
   int vec_height = vec.size(1);
@@ -425,8 +425,8 @@ void vecquant4matmul_cuda(
     vec.type(), "vecquant4matmul_cuda", ([&] {
       VecQuant4MatMulKernel<<<blocks, threads>>>(
         vec.data<scalar_t>(), mat.data<int>(), mul.data<scalar_t>(),
-        scales.data<scalar_t>(), zeros.data<int>(),
-        batch, vec_height, height, width, zero_width, groupsize
+        scales.data<scalar_t>(), zeros.data<int>(), g_idx.data<int>(),
+        batch, vec_height, height, width, zero_width
       );
     })
   );
@@ -439,12 +439,12 @@ __global__ void VecQuant4MatMulKernel(
            scalar_t* __restrict__ mul,
     const  scalar_t* __restrict__ scales,
     const       int* __restrict__ zeros,
+    const       int* __restrict__ g_idx,
     int batch,
     int vec_height,
     int height,
     int width,
-    int zero_width,
-    int groupsize
+    int zero_width
 ) {
   int b = blockIdx.z;
   int h = BLOCKHEIGHT4 * blockIdx.x;
@@ -467,18 +467,26 @@ __global__ void VecQuant4MatMulKernel(
   while (k < BLOCKWIDTH) {
     tmp = as_unsigned(mat[i]);
 
-    int g = (g_h + k) / groupsize;
-    scalar_t scale = scales[g * width + w];
-    scalar_t zero = scale * scalar_t(((as_unsigned(zeros[g * zero_width + z_w]) >> z_mod) & 0xF) + 1);
+    int tmp_k = 0;
+    scalar_t scales_tmp[8];
+    scalar_t zeros_tmp[8];
+    while (tmp_k < 8) {
+      int g = g_idx[g_h + k + tmp_k];
+      scalar_t scale = scales[g * width + w];
+      scalar_t zero = scale * scalar_t(((as_unsigned(zeros[g * zero_width + z_w]) >> z_mod) & 0xF) + 1);
+      scales_tmp[tmp_k] = scale;
+      zeros_tmp[tmp_k] = zero;
+      tmp_k += 1;
+    }
 
-    res += (scale * scalar_t((tmp >> 0) & 0xF) - zero) * blockvec[k + 0];
-    res += (scale * scalar_t((tmp >> 4) & 0xF) - zero) * blockvec[k + 1];
-    res += (scale * scalar_t((tmp >> 8) & 0xF) - zero) * blockvec[k + 2];
-    res += (scale * scalar_t((tmp >> 12) & 0xF) - zero) * blockvec[k + 3];
-    res += (scale * scalar_t((tmp >> 16) & 0xF) - zero) * blockvec[k + 4];
-    res += (scale * scalar_t((tmp >> 20) & 0xF) - zero) * blockvec[k + 5];
-    res += (scale * scalar_t((tmp >> 24) & 0xF) - zero) * blockvec[k + 6];
-    res += (scale * scalar_t((tmp >> 28) & 0xF) - zero) * blockvec[k + 7];
+    res += (scales_tmp[0] * scalar_t((tmp >> 0) & 0xF) - zeros_tmp[0]) * blockvec[k + 0];
+    res += (scales_tmp[1] * scalar_t((tmp >> 4) & 0xF) - zeros_tmp[1]) * blockvec[k + 1];
+    res += (scales_tmp[2] * scalar_t((tmp >> 8) & 0xF) - zeros_tmp[2]) * blockvec[k + 2];
+    res += (scales_tmp[3] * scalar_t((tmp >> 12) & 0xF) - zeros_tmp[3]) * blockvec[k + 3];
+    res += (scales_tmp[4] * scalar_t((tmp >> 16) & 0xF) - zeros_tmp[4]) * blockvec[k + 4];
+    res += (scales_tmp[5] * scalar_t((tmp >> 20) & 0xF) - zeros_tmp[5]) * blockvec[k + 5];
+    res += (scales_tmp[6] * scalar_t((tmp >> 24) & 0xF) - zeros_tmp[6]) * blockvec[k + 6];
+    res += (scales_tmp[7] * scalar_t((tmp >> 28) & 0xF) - zeros_tmp[7]) * blockvec[k + 7];
 
     i += width;
     k += 8;
@@ -912,7 +920,7 @@ __global__ void VecQuant4MatMulKernelFaster(
     res2 = __hfma2(__hfma2(deq2[(tmp >>  8) & 0xff][off], scale, zero), blockvec[k + 1], res2);
     res2 = __hfma2(__hfma2(deq2[(tmp >> 16) & 0xff][off], scale, zero), blockvec[k + 2], res2);
     res2 = __hfma2(__hfma2(deq2[(tmp >> 24) & 0xff][off], scale, zero), blockvec[k + 3], res2);
-	i += width;
+	  i += width;
     k += 4;
     res += __half2float(res2.x) + __half2float(res2.y);
   }
@@ -1116,3 +1124,119 @@ void vecquant4matmul_v1_faster_cuda(
     batch, vec_height, height, width
   );
 }
+
+#define GROUPS_SEQ_V2 32
+#define BLOCKWIDTH_SEQ_V2 64
+#define BLOCKHEIGHT4_SEQ_V2 32
+
+template <typename scalar_t>
+__global__ void VecQuant4MatMulSeqV2Kernel(
+    const  scalar_t* __restrict__ vec,
+    const       int* __restrict__ mat_t,
+           scalar_t* __restrict__ mul,
+    const  scalar_t* __restrict__ scales_t,
+    const       int* __restrict__ zeros_t,
+    const       int* __restrict__ g_idx,
+    int batch,
+    int vec_width,
+    int height,
+    int width,
+    int zero_width
+) {
+  int b = blockIdx.z;
+  int mat_t_n_row = BLOCKWIDTH_SEQ_V2 * blockIdx.x + threadIdx.x;
+  int mat_t_n_col = BLOCKHEIGHT4_SEQ_V2 * blockIdx.y; // BLOCKHEIGHT4 is BLOCKWIDTH4 here
+
+  __shared__ scalar_t blockvec[BLOCKWIDTH_SEQ_V2];
+  __shared__ int g_idx_ptr[BLOCKWIDTH_SEQ_V2];
+  __shared__ int zero_loc[GROUPS_SEQ_V2];
+  __shared__ int zero_shifter[GROUPS_SEQ_V2];
+  blockvec[threadIdx.x] = vec[b * vec_width + mat_t_n_row];
+  g_idx_ptr[threadIdx.x] = g_idx[mat_t_n_col * 8 + threadIdx.x];
+  if (threadIdx.x < GROUPS_SEQ_V2) {
+    zero_loc[threadIdx.x] = threadIdx.x / 8;
+  }
+  else{
+    int idx = threadIdx.x - GROUPS_SEQ_V2;
+    zero_shifter[idx] = idx % 8 * 4;
+  }
+  __syncthreads();
+  
+  scalar_t res = 0;
+  unsigned int tmp;
+  int k = 0;
+  int mat_i = mat_t_n_row * width + mat_t_n_col;
+  int zeros_i_base = mat_t_n_row * zero_width;
+  int scales_i_base = mat_t_n_row * GROUPS_SEQ_V2;
+
+  while (k < BLOCKWIDTH_SEQ_V2) {
+    tmp = as_unsigned(mat_t[mat_i]);
+    
+    scalar_t scales_tmp[8];
+    scalar_t zeros_tmp[8];
+    int g;
+    #pragma unroll
+    for (int i = 0; i < 8; i++) {
+      g = g_idx_ptr[k + i];
+      scalar_t scale = scales_t[scales_i_base + g];
+      scalar_t zero = scale * scalar_t(((as_unsigned(zeros_t[zeros_i_base + zero_loc[g]]) >> zero_shifter[g]) & 0xF) + 1);
+      scales_tmp[i] = scale;
+      zeros_tmp[i] = zero;
+    }
+
+    res += (scales_tmp[0] * scalar_t((tmp >> 0) & 0xF) - zeros_tmp[0]) * blockvec[k + 0];
+    res += (scales_tmp[1] * scalar_t((tmp >> 4) & 0xF) - zeros_tmp[1]) * blockvec[k + 1];
+    res += (scales_tmp[2] * scalar_t((tmp >> 8) & 0xF) - zeros_tmp[2]) * blockvec[k + 2];
+    res += (scales_tmp[3] * scalar_t((tmp >> 12) & 0xF) - zeros_tmp[3]) * blockvec[k + 3];
+    res += (scales_tmp[4] * scalar_t((tmp >> 16) & 0xF) - zeros_tmp[4]) * blockvec[k + 4];
+    res += (scales_tmp[5] * scalar_t((tmp >> 20) & 0xF) - zeros_tmp[5]) * blockvec[k + 5];
+    res += (scales_tmp[6] * scalar_t((tmp >> 24) & 0xF) - zeros_tmp[6]) * blockvec[k + 6];
+    res += (scales_tmp[7] * scalar_t((tmp >> 28) & 0xF) - zeros_tmp[7]) * blockvec[k + 7];
+
+    k += 8;
+    mat_i += 1;
+  }
+
+  atomicAdd(&mul[b * height + mat_t_n_row], res);
+}
+
+
+void vecquant4matmul_seq_v2_cuda(
+  torch::Tensor vec,
+  torch::Tensor mat_t,
+  torch::Tensor mul,
+  torch::Tensor scales_t,
+  torch::Tensor zeros_t,
+  torch::Tensor g_idx
+) {
+  // mat (n / 8, m)
+  // mat_t (m, n / 8)
+  // zeros need repack
+  // zeros (groups, m / 8)
+  // zeros_t should be (m, groups / 8)
+  // scales (groups, m)
+  // scales_t (m, groups)
+  int batch = vec.size(0);
+  int vec_width = vec.size(1);
+  int height = mat_t.size(0);
+  int width = mat_t.size(1);
+  int zero_width = zeros_t.size(1);
+
+  dim3 blocks(
+    (height + BLOCKWIDTH_SEQ_V2 - 1) / BLOCKWIDTH_SEQ_V2,
+    (width + BLOCKHEIGHT4_SEQ_V2 - 1) / BLOCKHEIGHT4_SEQ_V2,
+    batch
+  );
+  dim3 threads(BLOCKWIDTH_SEQ_V2);
+
+  AT_DISPATCH_FLOATING_TYPES(
+    vec.type(), "vecquant4matmul_seq_v2_cuda", ([&] {
+      VecQuant4MatMulSeqV2Kernel<<<blocks, threads>>>(
+        vec.data<scalar_t>(), mat_t.data<int>(), mul.data<scalar_t>(),
+        scales_t.data<scalar_t>(), zeros_t.data<int>(), g_idx.data<int>(),
+        batch, vec_width, height, width, zero_width
+      );
+    })
+  );
+}
+

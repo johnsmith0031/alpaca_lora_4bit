@@ -14,9 +14,12 @@ use_new = True
 auto_switch = True
 auto_switch_thd = 8
 debug = False
-
+faster = True
+cache_buffer = True
 
 def get_buffer(shape_of_qweight, dtype=torch.float16, device='cuda'):
+    if not cache_buffer:
+        return torch.zeros((shape_of_qweight[0] * 8, shape_of_qweight[1]), dtype=dtype, device=device)
     if shape_of_qweight not in buffer_mat_dic.keys():
         buffer_mat_dic[shape_of_qweight] = torch.zeros((shape_of_qweight[0] * 8, shape_of_qweight[1]), dtype=dtype, device=device)
     else:
@@ -67,8 +70,12 @@ def _matmul4bit_v2(x, qweight, scales, zeros, g_idx):
     x = x.reshape(-1, x.shape[-1])
     y = torch.zeros((x.shape[0], qweight.shape[-1]), dtype=torch.float32, device=x.device)
     dtype = x.dtype
-    x = x.half()
-    quant_cuda.vecquant4matmul_faster(x, qweight, y, scales, zeros, g_idx, x.shape[-1] // 2)
+    if faster:
+        x = x.half()
+        quant_cuda.vecquant4matmul_faster(x, qweight, y, scales, zeros, g_idx, x.shape[-1] // 2)
+    else:
+        x = x.float()
+        quant_cuda.vecquant4matmul(x, qweight, y, scales, zeros, g_idx)
     y = y.to(dtype)
     return y.reshape(outshape)
 
