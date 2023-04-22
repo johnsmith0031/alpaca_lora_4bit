@@ -42,6 +42,13 @@ It's fast on a 3070 Ti mobile.  Uses 5-6 GB of GPU RAM.
 * Removed triton, flash-atten from requirements.txt for compatibility
 * Removed bitsandbytes from requirements
 * Added pip installable branch based on winglian's PR
+* Added cuda backend quant attention and fused mlp from GPTQ_For_Llama.
+* Added lora patch for GPTQ_For_Llama triton backend.
+
+```
+from monkeypatch.gptq_for_llala_lora_monkey_patch import inject_lora_layers
+inject_lora_layers(model, lora_path, device, dtype)
+```
 
 # Requirements
 gptq-for-llama <br>
@@ -132,4 +139,18 @@ pip install xformers
 ```
 from monkeypatch.llama_attn_hijack_xformers import hijack_llama_attention
 hijack_llama_attention()
+```
+
+# Quant Attention and MLP Patch
+
+Note: Currently does not support peft lora, but can use inject_lora_layers to load simple lora with only q_proj and v_proj.<br>
+
+Usage:
+```
+from model_attn_mlp_patch import make_quant_attn, make_fused_mlp, inject_lora_layers
+make_quant_attn(model)
+make_fused_mlp(model)
+
+# Lora
+inject_lora_layers(model, lora_path)
 ```
