@@ -4,7 +4,7 @@ import torch
 import warnings
 
 from peft.tuners import lora
-from peft.tuners.lora import is_bnb_available, Linear, Linear8bitLt, LoraLayer
+from peft.tuners.lora import Linear, LoraLayer
 from peft.utils import _get_submodules, PeftType
 from torch import nn
 from transformers.pytorch_utils import Conv1D
@@ -87,12 +87,7 @@ class Linear4bitLt(Autograd4bitQuantLinear, LoraLayer):
 class GPTQLoraModel(lora.LoraModel):
     def _find_and_replace(self, adapter_name):
         lora_config = self.peft_config[adapter_name]
-        loaded_in_8bit = getattr(self.model, "is_loaded_in_8bit", False)
-        if loaded_in_8bit and not is_bnb_available():
-            raise ImportError(
-                "To use Lora with 8-bit quantization, please install the `bitsandbytes` package. "
-                "You can install it with `pip install bitsandbytes`."
-            )
+        loaded_in_8bit = False
         is_target_modules_in_base_model = False
         kwargs = {
             "r": lora_config.r,
