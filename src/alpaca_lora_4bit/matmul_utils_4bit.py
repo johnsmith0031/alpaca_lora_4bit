@@ -45,7 +45,7 @@ def _matmul4bit_v1(x, qweight, scales, zeros):
     assert qweight.shape[0] * 8 == x.shape[-1]
     outshape = x.shape[:-1] + (qweight.shape[1],)
     x = x.reshape(-1, x.shape[-1])
-    y = torch.zeros((x.shape[0], qweight.shape[-1]), dtype=torch.float32, device=x.device)
+    y = torch.zeros((x.shape[0], qweight.shape[-1]), dtype=torch.float16, device=x.device)
     dtype = x.dtype
     x = x.half()
     quant_cuda.vecquant4matmul_v1_faster(x, qweight, y, scales, zeros)
@@ -119,7 +119,7 @@ def matmul4bit(x, qweight, scales, zeros, g_idx=None):
         if use_new:
             if auto_switch:
                 if np.prod(x.shape[:-1]) > auto_switch_thd:
-                    output = _matmul4bit_v1_recons(x.to(scales.dtype), qweight, scales.half(), zeros.half())
+                    output = _matmul4bit_v1_recons(x.half(), qweight, scales.half(), zeros.half())
                 else:
                     output = _matmul4bit_v1(x, qweight, scales, zeros)
         else:
