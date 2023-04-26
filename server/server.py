@@ -88,7 +88,7 @@ class ModelServer:
             print('Quantized attention applied.')
 
             if self.lora_path is not None:
-                inject_lora_layers(model, self.lora_path, device='cuda', torch_dtype=torch.float16)
+                inject_lora_layers(model, self.lora_path, device='cuda', dtype=torch.float16)
         
         self.model, self.tokenizer = model, tokenizer
         print("Loaded in {:.2f} seconds.".format(time.time() - t0))
