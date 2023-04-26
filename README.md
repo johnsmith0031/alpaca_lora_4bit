@@ -9,6 +9,10 @@ pip install git+https://github.com/johnsmith0031/alpaca_lora_4bit@winglian-setup
 
 Better inference performance with text_generation_webui, about <b>40% faster</b>
 
+Simple expriment results:<br>
+7b model with groupsize=128 no act-order<br>
+improved from 13 tokens/sec to 20 tokens/sec
+
 <b>Step:</b>
 1. run model server process
 2. run webui process with monkey patch
