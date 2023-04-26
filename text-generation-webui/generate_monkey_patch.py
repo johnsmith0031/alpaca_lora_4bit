@@ -1,6 +1,6 @@
 import modules.text_generation
 from modules.text_generation import *
-from modules.callbacks import _SentinelTokenStoppingCriteria
+from alpaca_lora_4bit.server import _SentinelTokenStoppingCriteria
 
 def generate_reply_patched(question, state, eos_token=None, stopping_strings=[]):
     if shared.model_name == 'None' or shared.model is None:
@@ -115,34 +115,8 @@ def generate_reply_patched(question, state, eos_token=None, stopping_strings=[])
         # Stream the reply 1 token at a time.
         # This is based on the trick of using 'stopping_criteria' to create an iterator.
         elif not shared.args.flexgen:
-
-            # def generate_with_callback(callback=None, **kwargs):
-            #     kwargs['stopping_criteria'].append(Stream(callback_func=callback))
-            #     clear_torch_cache()
-            #     with torch.no_grad():
-            #         shared.model.generate(**kwargs)
-
-            # def generate_with_streaming(**kwargs):
-            #     return Iteratorize(generate_with_callback, kwargs, callback=None)
-
-            # if not shared.is_chat():
-            #     yield formatted_outputs(original_question, shared.model_name)
-
-            # with generate_with_streaming(**generate_params) as generator:
-            #     for output in generator:
-            #         if shared.soft_prompt:
-            #             output = torch.cat((input_ids[0], output[filler_input_ids.shape[1]:]))
-
-            #         new_tokens = len(output) - len(input_ids[0])
-            #         reply = decode(output[-new_tokens:], state['skip_special_tokens'])
-            #         if not shared.is_chat():
-            #             reply = original_question + apply_extensions('output', reply)
-
-            #         if output[-1] in eos_token_ids:
-            #             break
-
-            #         yield formatted_outputs(reply, shared.model_name)
-
+            
+            # Repalced Original with another socket server
             from queue import Queue
             queue = Queue()
             def callback_func(x, is_end=False):
@@ -150,9 +124,6 @@ def generate_reply_patched(question, state, eos_token=None, stopping_strings=[])
                     queue.put(x)
                 else:
                     queue.put(None)
-
-            # remove stopping_criteria
-            generate_params.pop('stopping_criteria')
 
             shared.model.callback_func = callback_func
             shared.model.generate(**generate_params)
