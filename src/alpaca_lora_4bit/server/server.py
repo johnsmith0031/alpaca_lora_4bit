@@ -24,6 +24,28 @@ def clear_torch_cache():
     torch.cuda.empty_cache()
 
 
+# Copied from https://github.com/PygmalionAI/gradio-ui/
+class _SentinelTokenStoppingCriteria(StoppingCriteria):
+
+    def __init__(self, sentinel_token_ids: list, starting_idx: int):
+        StoppingCriteria.__init__(self)
+        self.sentinel_token_ids = sentinel_token_ids
+        self.starting_idx = starting_idx
+
+    def __call__(self, input_ids: torch.LongTensor, _scores: torch.FloatTensor) -> bool:
+        for sample in input_ids:
+            trimmed_sample = sample[self.starting_idx:]
+
+            for i in range(len(self.sentinel_token_ids)):
+                # Can't unfold, output is still too tiny. Skip.
+                if trimmed_sample.shape[-1] < self.sentinel_token_ids[i].shape[-1]:
+                    continue
+                for window in trimmed_sample.unfold(0, self.sentinel_token_ids[i].shape[-1], 1):
+                    if torch.all(torch.eq(self.sentinel_token_ids[i][0], window)):
+                        return True
+        return False
+    
+
 # Copy from text-generation-webui/modules/callbacks.py
 class Stream(StoppingCriteria):
     def __init__(self, callback_func=None):
