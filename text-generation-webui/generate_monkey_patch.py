@@ -1,6 +1,6 @@
 import modules.text_generation
 from modules.text_generation import *
-from alpaca_lora_4bit.server import _SentinelTokenStoppingCriteria
+from server import _SentinelTokenStoppingCriteria
 
 def generate_reply_patched(question, state, eos_token=None, stopping_strings=[]):
     if shared.model_name == 'None' or shared.model is None:

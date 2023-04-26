@@ -1,8 +1,7 @@
-from .. import autograd_4bit
 import time
 import torch
-from ..autograd_4bit import load_llama_model_4bit_low_ram, Autograd4bitQuantLinear
-from alpaca_lora_4bit.model_attn_mlp_patch import make_quant_attn, make_fused_mlp, inject_lora_layers
+from autograd_4bit import load_llama_model_4bit_low_ram, Autograd4bitQuantLinear
+from model_attn_mlp_patch import make_quant_attn, make_fused_mlp, inject_lora_layers
 import zmq
 from transformers import StoppingCriteria, StoppingCriteriaList
 from io import BytesIO
