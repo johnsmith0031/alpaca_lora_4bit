@@ -1,4 +1,4 @@
-from server import ModelClient
+from model_server import ModelClient
 from transformers import LlamaTokenizer
 
 def load_model_llama(*args, **kwargs):

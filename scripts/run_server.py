@@ -1,4 +1,4 @@
-from server import ModelServer
+from model_server import ModelServer
 import argparse
 
 if __name__ == '__main__':
