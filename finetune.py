@@ -49,6 +49,7 @@ import os
 import peft
 import peft.tuners.lora
 
+import wandb
 import torch
 import transformers
 from alpaca_lora_4bit.autograd_4bit import load_llama_model_4bit_low_ram
@@ -177,13 +178,14 @@ if not ft_config.skip:
         transformers.logging.set_verbosity_info()
 
     # Run Trainer
-    if ft_config.resume_checkpoint:
-        print('Resuming from {} ...'.format(ft_config.resume_checkpoint))
-        state_dict_peft = torch.load(os.path.join(ft_config.resume_checkpoint, 'pytorch_model.bin'), map_location='cpu')
-        set_peft_model_state_dict(model, state_dict_peft)
-        trainer.train(ft_config.resume_checkpoint)
-    else:
-        trainer.train()
+    with wandb.init(project="alpaca_lora_4bit") as run:
+        if ft_config.resume_checkpoint:
+            print('Resuming from {} ...'.format(ft_config.resume_checkpoint))
+            state_dict_peft = torch.load(os.path.join(ft_config.resume_checkpoint, 'pytorch_model.bin'), map_location='cpu')
+            set_peft_model_state_dict(model, state_dict_peft)
+            trainer.train(ft_config.resume_checkpoint)
+        else:
+            trainer.train()
 
     # Restore old model state dict
     model.state_dict = old_state_dict
