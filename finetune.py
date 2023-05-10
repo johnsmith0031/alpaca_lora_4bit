@@ -42,6 +42,7 @@ import os
 import peft
 import peft.tuners.lora
 
+import wandb
 import torch
 import transformers
 from autograd_4bit import load_llama_model_4bit_low_ram
@@ -130,6 +131,13 @@ if not ft_config.skip:
     if not ft_config.ddp and torch.cuda.device_count() > 1:
         model.is_parallelizable = True
         model.model_parallel = True
+        
+    # Count eval count for wandb
+    eval_count = 10
+    eval_steps = max(
+        ft_config.logging_steps, (len(data.train_data) + len(data.val_data)) // (eval_count*ft_config.mbatch_size)
+    )
+    print(f"Run eval every {eval_steps} steps")
 
     training_arguments = transformers.TrainingArguments(
         per_device_train_batch_size=ft_config.mbatch_size,
@@ -140,9 +148,9 @@ if not ft_config.skip:
         learning_rate=ft_config.lr,
         fp16=True,
         logging_steps=ft_config.logging_steps,
-        evaluation_strategy="no",
+        evaluation_strategy="steps",
         save_strategy="steps",
-        eval_steps=None,
+        eval_steps=eval_steps,
         save_steps=ft_config.save_steps,
         output_dir=ft_config.lora_out_dir,
         save_total_limit=ft_config.save_total_limit,
@@ -170,13 +178,14 @@ if not ft_config.skip:
         transformers.logging.set_verbosity_info()
 
     # Run Trainer
-    if ft_config.resume_checkpoint:
-        print('Resuming from {} ...'.format(ft_config.resume_checkpoint))
-        state_dict_peft = torch.load(os.path.join(ft_config.resume_checkpoint, 'pytorch_model.bin'), map_location='cpu')
-        set_peft_model_state_dict(model, state_dict_peft)
-        trainer.train(ft_config.resume_checkpoint)
-    else:
-        trainer.train()
+    with wandb.init(project="alpaca_lora_4bit") as run:
+        if ft_config.resume_checkpoint:
+            print('Resuming from {} ...'.format(ft_config.resume_checkpoint))
+            state_dict_peft = torch.load(os.path.join(ft_config.resume_checkpoint, 'pytorch_model.bin'), map_location='cpu')
+            set_peft_model_state_dict(model, state_dict_peft)
+            trainer.train(ft_config.resume_checkpoint)
+        else:
+            trainer.train()
 
     # Restore old model state dict
     model.state_dict = old_state_dict
