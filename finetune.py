@@ -131,6 +131,13 @@ if not ft_config.skip:
     if not ft_config.ddp and torch.cuda.device_count() > 1:
         model.is_parallelizable = True
         model.model_parallel = True
+        
+    # Count eval count for wandb
+    eval_count = 10
+    eval_steps = max(
+        ft_config.logging_steps, (len(data.train_data) + len(data.val_data)) // (eval_count*ft_config.mbatch_size)
+    )
+    print(f"Run eval every {eval_steps} steps")
 
     training_arguments = transformers.TrainingArguments(
         per_device_train_batch_size=ft_config.mbatch_size,
@@ -141,9 +148,9 @@ if not ft_config.skip:
         learning_rate=ft_config.lr,
         fp16=True,
         logging_steps=ft_config.logging_steps,
-        evaluation_strategy="no",
+        evaluation_strategy="steps",
         save_strategy="steps",
-        eval_steps=None,
+        eval_steps=eval_steps,
         save_steps=ft_config.save_steps,
         output_dir=ft_config.lora_out_dir,
         save_total_limit=ft_config.save_total_limit,
