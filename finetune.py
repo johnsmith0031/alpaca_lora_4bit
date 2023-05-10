@@ -140,11 +140,14 @@ if not ft_config.skip:
         model.model_parallel = True
         
     # Count eval count for wandb
-    eval_count = 10
-    eval_steps = max(
-        ft_config.logging_steps, (len(data.train_data) + len(data.val_data)) // (eval_count*ft_config.mbatch_size)
-    )
-    print(f"Run eval every {eval_steps} steps")
+    if ft_config.val_set_size > 0:
+        eval_count = 10
+        eval_steps = max(
+            ft_config.logging_steps, (len(data.train_data) + len(data.val_data)) // (eval_count*ft_config.mbatch_size)
+        )
+        print(f"Run eval every {eval_steps} steps")
+    else:
+        eval_steps = 0
 
     training_arguments = transformers.TrainingArguments(
         per_device_train_batch_size=ft_config.mbatch_size,
@@ -155,9 +158,9 @@ if not ft_config.skip:
         learning_rate=ft_config.lr,
         fp16=True,
         logging_steps=ft_config.logging_steps,
-        evaluation_strategy="steps",
+        evaluation_strategy="steps" if eval_steps != 0 else "no",
         save_strategy="steps",
-        eval_steps=eval_steps,
+        eval_steps=eval_steps if eval_steps != 0 else None,
         save_steps=ft_config.save_steps,
         output_dir=ft_config.lora_out_dir,
         save_total_limit=ft_config.save_total_limit,
