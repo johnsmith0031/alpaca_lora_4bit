@@ -9,3 +9,4 @@ pyzmq
 wandb
 peft @ git+https://github.com/huggingface/peft.git@70af02a2bca5a63921790036b2c9430edf4037e2
 transformers @ git+https://github.com/huggingface/transformers.git
+packaging

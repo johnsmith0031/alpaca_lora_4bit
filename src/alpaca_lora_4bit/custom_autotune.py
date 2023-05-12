@@ -6,6 +6,7 @@ Mostly the same as the autotuner in Triton, but with a few changes like using 40
 import builtins
 import math
 import time
+from packaging import version
 from typing import Dict
 
 import triton
@@ -68,7 +69,11 @@ class Autotuner(triton.KernelInterface):
 		try:
 			# In testings using only 40 reps seems to be close enough and it appears to be what PyTorch uses
 			# PyTorch also sets fast_flush to True, but I didn't see any speedup so I'll leave the default
-			return triton.testing.do_bench(kernel_call, rep=40)
+			if version.parse(triton.__version__) > version.parse("2.0.0.post1"):
+				bench_kwargs = {"quantiles": None}
+			else:
+				bench_kwargs = {"percentiles": None}
+			return triton.testing.do_bench(kernel_call, rep=40, **bench_kwargs)
 		except triton.compiler.OutOfResources:
 			return float('inf')
 
