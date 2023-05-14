@@ -12,7 +12,7 @@ def get_reply_from_output_str(reply, original_question):
 
     return reply
     
-def generate_reply_patched(question, original_question, seed, state, eos_token=None, stopping_strings=[]):
+def generate_reply_patched(question, original_question, seed, state, eos_token=None, stopping_strings=None, is_chat=False):
     generate_params = {}
     for k in ['max_new_tokens', 'do_sample', 'temperature', 'top_p', 'typical_p', 'repetition_penalty', 'encoder_repetition_penalty', 'top_k', 'min_length', 'no_repeat_ngram_size', 'num_beams', 'penalty_alpha', 'length_penalty', 'early_stopping']:
         generate_params[k] = state[k]
@@ -101,11 +101,21 @@ def generate_reply_patched(question, original_question, seed, state, eos_token=N
             shared.model.start_recieving()
 
             token_count = 0
-            while True:
-                reply = queue.get()
-                if reply is None:
-                    break
-                token_count += 1
+            end_flag = False
+            while not end_flag:
+                if queue.empty():
+                    reply = queue.get()
+                    if reply is None:
+                        break
+                    token_count += 1
+                else:
+                    while not queue.empty():
+                        reply_new = queue.get()
+                        if reply_new is None:
+                            end_flag = True
+                            break
+                        token_count += 1
+                        reply = reply_new
                 yield get_reply_from_output_str(reply, original_question)
 
     except Exception:
