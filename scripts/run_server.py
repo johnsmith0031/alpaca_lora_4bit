@@ -9,6 +9,8 @@ if __name__ == '__main__':
     arg_parser.add_argument('--groupsize', type=int, default=-1)
     arg_parser.add_argument('--v1', action='store_true')
     arg_parser.add_argument('--quant_attn', action='store_true')
+    arg_parser.add_argument('--triton_quant_attn', action='store_true')
+    arg_parser.add_argument('--autotune_warmup', action='store_true')
     arg_parser.add_argument('--port', type=int, default=5555)
     arg_parser.add_argument('--pub_port', type=int, default=5556)
     args = arg_parser.parse_args()
@@ -20,6 +22,8 @@ if __name__ == '__main__':
         groupsize=args.groupsize,
         is_v1_model=args.v1,
         quant_attn=args.quant_attn,
+        triton_quant_attn=args.triton_quant_attn,
+        autotune_warmup=args.autotune_warmup,
         port=args.port,
         pub_port=args.pub_port)
 

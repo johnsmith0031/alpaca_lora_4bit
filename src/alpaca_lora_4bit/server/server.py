@@ -59,13 +59,15 @@ class Stream(StoppingCriteria):
 
 class ModelServer:
     
-    def __init__(self, config_path, model_path, lora_path=None, groupsize=128, is_v1_model=False, quant_attn=False, port=5555, pub_port=5556):
+    def __init__(self, config_path, model_path, lora_path=None, groupsize=128, is_v1_model=False, quant_attn=False, triton_quant_attn=False, autotune_warmup=False, port=5555, pub_port=5556):
         self.config_path = config_path
         self.model_path = model_path
         self.lora_path = lora_path
         self.groupsize = groupsize
         self.is_v1_model = is_v1_model
         self.quant_attn = quant_attn
+        self.triton_quant_attn = triton_quant_attn
+        self.autotune_warmup = autotune_warmup
         self.port = port
         self.model = None
         self.tokenizer = None
@@ -105,12 +107,23 @@ class ModelServer:
             print('AMP applied.')
 
         if self.quant_attn:
-            make_quant_attn(model, is_v1_model=self.is_v1_model)
-            make_fused_mlp(model, is_v1_model=self.is_v1_model)
-            print('Quantized attention applied.')
+            if self.triton_quant_attn:
+                import triton
+                from alpaca_lora_4bit.triton_fused_modules import make_quant_attn, make_fused_mlp
+                assert not self.is_v1_model, 'v1 model is not supported'
+                make_quant_attn(model)
+                make_fused_mlp(model)
+                print('Triton quantized attention applied.')
+            else:
+                make_quant_attn(model, is_v1_model=self.is_v1_model)
+                make_fused_mlp(model, is_v1_model=self.is_v1_model)
+                print('Quantized attention applied.')
 
             if self.lora_path is not None:
                 inject_lora_layers(model, self.lora_path, device='cuda', dtype=torch.float16)
+        
+        if self.quant_attn and self.triton_quant_attn and self.autotune_warmup:
+            print('warn: warmup not implemented.')
         
         self.model, self.tokenizer = model, tokenizer
         print("Loaded in {:.2f} seconds.".format(time.time() - t0))
