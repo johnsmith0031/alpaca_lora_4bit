@@ -18,7 +18,7 @@ def parse_commandline():
     parser_training = parser.add_argument_group("training")
 
     # Config args group
-    parser_config.add_argument("--ds_type", choices=["txt", "alpaca", "gpt4all"], default="alpaca", required=False,
+    parser_config.add_argument("--ds_type", choices=["txt", "alpaca", "gpt4all", "bluemoon"], default="alpaca", required=False,
         help="Dataset structure format. Default: %(default)s"
     )
     parser_config.add_argument("--lora_out_dir", default="alpaca_lora", required=False,
