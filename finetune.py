@@ -116,6 +116,9 @@ if not ft_config.skip:
     elif ft_config.ds_type == "gpt4all" and not ft_config.skip:
         #### GPT4All Data
         data = train_data.TrainGPT4All(ft_config.dataset, ft_config.val_set_size, tokenizer, ft_config.cutoff_len)
+    elif ft_config.ds_type == "bluemoon" and not ft_config.skip:
+        #### Blue Moon Data
+        data = train_data.TrainBlueMoon(ft_config.dataset, ft_config.val_set_size, tokenizer, ft_config.cutoff_len)        
     else:
         raise NotImplementedError("ERROR: Unknown dataset format")
     data.prepare_data(thd=ft_config.txt_row_thd, use_eos_token=ft_config.use_eos_token)
