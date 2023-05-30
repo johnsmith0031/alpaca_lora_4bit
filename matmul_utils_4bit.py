@@ -12,17 +12,18 @@ debug = False
 faster = True
 cache_buffer = True
 
-def get_buffer(shape_of_qweight, dtype=torch.float16, device='cuda'):
+def get_buffer(shape_of_qweight, dtype=torch.float16, device='cuda', bits=4):
+    target_shape = (shape_of_qweight[0] * (32 // bits), shape_of_qweight[1])
     if not cache_buffer:
-        return torch.zeros((shape_of_qweight[0] * 8, shape_of_qweight[1]), dtype=dtype, device=device)
-    if shape_of_qweight not in buffer_mat_dic.keys():
-        buffer_mat_dic[shape_of_qweight] = torch.zeros((shape_of_qweight[0] * 8, shape_of_qweight[1]), dtype=dtype, device=device)
+        return torch.zeros(target_shape, dtype=dtype, device=device)
+    if target_shape not in buffer_mat_dic.keys():
+        buffer_mat_dic[target_shape] = torch.zeros(target_shape, dtype=dtype, device=device)
     else:
-        if buffer_mat_dic[shape_of_qweight].device != device:
-            buffer_mat_dic[shape_of_qweight] = buffer_mat_dic[shape_of_qweight].to(device)
-        if buffer_mat_dic[shape_of_qweight].dtype != dtype:
-            buffer_mat_dic[shape_of_qweight] = buffer_mat_dic[shape_of_qweight].to(dtype=dtype)
-    return buffer_mat_dic[shape_of_qweight]
+        if buffer_mat_dic[target_shape].device != device:
+            buffer_mat_dic[target_shape] = buffer_mat_dic[target_shape].to(device)
+        if buffer_mat_dic[target_shape].dtype != dtype:
+            buffer_mat_dic[target_shape] = buffer_mat_dic[target_shape].to(dtype=dtype)
+    return buffer_mat_dic[target_shape]
 
 
 def _matmul4bit_v1(x, qweight, scales, zeros):
@@ -100,6 +101,22 @@ def _matmul4bit_v2_recons(x, qweight, scales, zeros, g_idx, transpose=False):
         assert qweight.shape[1] == x.shape[-1]
     buffer = get_buffer(qweight.shape, dtype=scales.dtype, device=qweight.device)
     quant_cuda.vecquant4recons_v2(qweight, buffer, scales, zeros, g_idx)
+    if not transpose:
+        output = torch.matmul(x, buffer)
+    else:
+        output = torch.matmul(x, buffer.T)
+    return output
+
+
+def _matmul2bit_v2_recons(x, qweight, scales, zeros, g_idx, transpose=False):
+    if debug:
+        print('_matmul2bit_v2_recons')
+    if not transpose:
+        assert qweight.shape[0] * 16 == x.shape[-1]
+    else:
+        assert qweight.shape[1] == x.shape[-1]
+    buffer = get_buffer(qweight.shape, dtype=scales.dtype, device=qweight.device, bits=2)
+    quant_cuda.vecquant2recons_v2(qweight, buffer, scales, zeros, g_idx)
     if not transpose:
         output = torch.matmul(x, buffer)
     else:
