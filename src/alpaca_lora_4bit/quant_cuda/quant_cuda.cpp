@@ -132,6 +132,19 @@ void vecquant4recons_v2(
   vecquant4recons_v2_cuda(mat, res, scales, zeros, g_idx);
 }
 
+void vecquant2recons_v2_cuda(
+  torch::Tensor mat, torch::Tensor res,
+  torch::Tensor scales, torch::Tensor zeros,
+  torch::Tensor g_idx
+);
+
+void vecquant2recons_v2(
+  torch::Tensor mat, torch::Tensor res, torch::Tensor scales, torch::Tensor zeros, torch::Tensor g_idx
+) {
+  const at::cuda::OptionalCUDAGuard device_guard(device_of(scales));
+  vecquant2recons_v2_cuda(mat, res, scales, zeros, g_idx);
+}
+
 void vecquant4matmul_v1_faster_cuda(
   torch::Tensor vec, torch::Tensor mat, torch::Tensor mul,
   torch::Tensor scales, torch::Tensor zeros
@@ -173,6 +186,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // Reconstruction Kernel
   m.def("vecquant4recons_v1", &vecquant4recons_v1, "Vector 4-bit Quantized Matrix Reconstruction (CUDA)");
   m.def("vecquant4recons_v2", &vecquant4recons_v2, "Vector 4-bit Quantized Matrix Reconstruction (CUDA) with group-size support");
+  m.def("vecquant2recons_v2", &vecquant2recons_v2, "Vector 2-bit Quantized Matrix Reconstruction (CUDA) with group-size support");
 
   // Seq Kernel (Experimental)
   m.def("vecquant4matmul_seq_v2", &vecquant4matmul_seq_v2, "Vector 4-bit Quantized Matrix Multiplication (CUDA), sequential version, v2 support");

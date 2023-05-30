@@ -1068,6 +1068,64 @@ void vecquant4recons_v2_cuda(
 }
 
 template <typename scalar_t>
+__global__ void VecQuant2ReconsV2Kernel(
+    const       int* __restrict__ mat,
+           scalar_t* __restrict__ res,
+    const  scalar_t* __restrict__ scales,
+    const       int* __restrict__ zeros,
+    const       int* __restrict__ g_idx,
+    int height,
+    int width,
+    int zero_width
+) {
+  int b = blockIdx.z;
+  int h = BLOCKHEIGHT2 * blockIdx.x;
+  int w = BLOCKWIDTH * blockIdx.y + threadIdx.x;
+  int n_rows = h * 16 + b;
+  int n_cols = w;
+  int z_rows = as_int(g_idx[n_rows]);
+  int z_cols = n_cols / 16;
+  int z_shift = (n_cols % 16) * 2;
+  scalar_t scale = scales[z_rows * width + n_cols];
+  scalar_t zero = scale * scalar_t(((as_unsigned(zeros[z_rows * zero_width + z_cols]) >> z_shift) & 0x3) + 1);
+  int i = width * h + width * (b / 16) + w;
+  int shift = b % 16 * 2;
+  unsigned int tmp = as_unsigned(mat[i]);
+  scalar_t result = (scale * scalar_t((tmp >> shift) & 0x3) - zero);
+  res[n_rows * width + n_cols] = result;
+}
+
+void vecquant2recons_v2_cuda(
+  torch::Tensor mat,
+  torch::Tensor res,
+  torch::Tensor scales,
+  torch::Tensor zeros,
+  torch::Tensor g_idx
+) {
+  int batch = BLOCKWIDTH;
+  int height = mat.size(0);
+  int width = mat.size(1);
+  int zero_width = zeros.size(1);
+
+  dim3 blocks(
+    (height + BLOCKHEIGHT2 - 1) / BLOCKHEIGHT2,
+    (width + BLOCKWIDTH - 1) / BLOCKWIDTH,
+    batch
+  );
+  dim3 threads(BLOCKWIDTH);
+
+  AT_DISPATCH_FLOATING_TYPES_AND_HALF(
+    scales.type(), "vecquant2recons_v2_cuda", ([&] {
+      VecQuant2ReconsV2Kernel<<<blocks, threads>>>(
+        mat.data<int>(), res.data<scalar_t>(),
+        scales.data<scalar_t>(), zeros.data<int>(),
+        g_idx.data<int>(), height, width, zero_width
+      );
+    })
+  );
+}
+
+template <typename scalar_t>
 __global__ void VecQuant4MatMulV1KernelFaster(
     const  half2* __restrict__ vec,
     const    int* __restrict__ mat,
