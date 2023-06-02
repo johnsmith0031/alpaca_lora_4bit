@@ -172,7 +172,7 @@ class Autograd4bitQuantLinear(nn.Module):
         groupsize = groupsize if groupsize != -1 else in_features
         self.groupsize = groupsize
         self.is_v1_model = is_v1_model
-        self.disable_bias = True
+        self.disable_bias = False
         if is_v1_model:
             self.register_buffer('zeros', torch.empty((out_features, 1)))
             self.register_buffer('scales', torch.empty((out_features, 1)))
