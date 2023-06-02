@@ -150,9 +150,9 @@ def switch_backend_to(to_backend):
         raise ValueError('Backend not supported.')
 
 
-def matmul4bit_with_backend(x, qweight, scales, qzeros, g_idx, bits, maxq):
+def matmul4bit_with_backend(x, qweight, scales, qzeros, g_idx, bits, maxq, groupsize=None):
     if backend == 'cuda':
-        return mm4b.matmul4bit(x, qweight, scales, qzeros, g_idx)
+        return mm4b.matmul4bit(x, qweight, scales, qzeros, g_idx, groupsize)
     elif backend == 'triton':
         assert qzeros.dtype == torch.int32
         return tu.triton_matmul(x, qweight, scales, qzeros, g_idx, bits, maxq)
@@ -198,7 +198,7 @@ class Autograd4bitQuantLinear(nn.Module):
             else:
                 out = matmul4bit_with_backend(x, self.qweight, self.scales,
                                             self.qzeros if not self.is_v1_model else self.zeros,
-                                            self.g_idx, self.bits, self.maxq)
+                                            self.g_idx, self.bits, self.maxq, self.groupsize)
         elif self.bits == 2:
             out = AutogradMatmul2bit.apply(x, self.qweight, self.scales, self.qzeros, self.g_idx, self.bits, self.maxq)
         else:
