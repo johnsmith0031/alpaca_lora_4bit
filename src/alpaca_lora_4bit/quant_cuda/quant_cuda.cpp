@@ -107,6 +107,21 @@ void vecquant4matmul_faster(
   vecquant4matmul_faster_cuda(vec, mat, mul, scales, zeros, g_idx, vec_height);
 }
 
+void vecquant4matmul_old_faster_cuda(
+  torch::Tensor vec, torch::Tensor mat, torch::Tensor mul,
+  torch::Tensor scales, torch::Tensor zeros,
+  int groupsize, int vec_height
+);
+
+void vecquant4matmul_old_faster(
+  torch::Tensor vec, torch::Tensor mat, torch::Tensor mul,
+  torch::Tensor scales, torch::Tensor zeros,
+  int groupsize, int vec_height
+) {
+  const at::cuda::OptionalCUDAGuard device_guard(device_of(vec));
+  vecquant4matmul_old_faster_cuda(vec, mat, mul, scales, zeros, groupsize, vec_height);
+}
+
 void vecquant4recons_v1_cuda(
   torch::Tensor mat, torch::Tensor res, torch::Tensor scales, torch::Tensor zeros
 );
@@ -179,6 +194,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("vecquant2matmul_faster", &vecquant2matmul_faster, "Vector 4-bit Quantized Matrix Multiplication (CUDA), faster version");
   m.def("vecquant3matmul_faster", &vecquant3matmul_faster, "Vector 3-bit Quantized Matrix Multiplication (CUDA), faster version");
   m.def("vecquant4matmul_faster", &vecquant4matmul_faster, "Vector 4-bit Quantized Matrix Multiplication (CUDA), faster version");
+  m.def("vecquant4matmul_old_faster", &vecquant4matmul_old_faster, "Vector 4-bit Quantized Matrix Multiplication (CUDA), older verison (do not support g_idx), faster version");
 
   // V1 Support for vecquant4matmul_faster
   m.def("vecquant4matmul_v1_faster", &vecquant4matmul_v1_faster, "Vector 4-bit Quantized Matrix Multiplication (CUDA), faster version, v1 support");

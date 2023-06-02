@@ -14,7 +14,9 @@ use_new = True
 auto_switch = True
 auto_switch_thd = 8
 debug = False
-faster = True
+faster_mode = 'old_faster' # set disable to disable it
+valid_faster_mode = ('faster', 'old_faster')
+act_order = False
 cache_buffer = True
 
 def get_buffer(shape_of_qweight, dtype=torch.float16, device='cuda', bits=4):
@@ -54,7 +56,7 @@ def _matmul4bit_v1(x, qweight, scales, zeros):
     return y.reshape(outshape)
 
 
-def _matmul4bit_v2(x, qweight, scales, zeros, g_idx):
+def _matmul4bit_v2(x, qweight, scales, zeros, g_idx, groupsize=None):
     """
     input x: (n, m)
     qweight: (j, k)
@@ -69,14 +71,26 @@ def _matmul4bit_v2(x, qweight, scales, zeros, g_idx):
     assert qweight.shape[0] * 8 == x.shape[-1]
     outshape = x.shape[:-1] + (qweight.shape[1],)
     x = x.reshape(-1, x.shape[-1])
-    y = torch.zeros((x.shape[0], qweight.shape[-1]), dtype=torch.float16, device=x.device)
     dtype = x.dtype
-    if faster:
-        x = x.half()
-        quant_cuda.vecquant4matmul_faster(x, qweight, y, scales, zeros, g_idx, x.shape[-1] // 2)
-    else:
+    if act_order:
+        y = torch.zeros((x.shape[0], qweight.shape[-1]), dtype=torch.float32, device=x.device)
         x = x.float()
-        quant_cuda.vecquant4matmul(x, qweight, y, scales, zeros, g_idx)
+        quant_cuda.vecquant4matmul(x, qweight, y, scales.float(), zeros, g_idx)
+    elif faster_mode in valid_faster_mode:
+        if faster_mode == 'faster':
+            y = torch.zeros((x.shape[0], qweight.shape[-1]), dtype=torch.float16, device=x.device)
+            x = x.half()
+            quant_cuda.vecquant4matmul_faster(x, qweight, y, scales, zeros, g_idx, x.shape[-1] // 2)
+        elif faster_mode == 'old_faster':
+            y = torch.zeros((x.shape[0], qweight.shape[-1]), dtype=torch.float32, device=x.device)
+            x = x.half()
+            quant_cuda.vecquant4matmul_old_faster(x, qweight, y, scales.float(), zeros, groupsize, x.shape[-1] // 2)
+        else:
+            raise ValueError('faster_mode should be in {}'.format(valid_faster_mode))
+    else:
+        y = torch.zeros((x.shape[0], qweight.shape[-1]), dtype=torch.float32, device=x.device)
+        x = x.float()
+        quant_cuda.vecquant4matmul(x, qweight, y, scales.float(), zeros, g_idx)
     y = y.to(dtype)
     return y.reshape(outshape)
 
@@ -129,7 +143,7 @@ def _matmul2bit_v2_recons(x, qweight, scales, zeros, g_idx, transpose=False):
     return output
 
 
-def matmul4bit(x, qweight, scales, zeros, g_idx=None):
+def matmul4bit(x, qweight, scales, zeros, g_idx=None, groupsize=None):
     # detect if zeros is int32
     if zeros.dtype != torch.int32:
         # use v1
@@ -150,9 +164,9 @@ def matmul4bit(x, qweight, scales, zeros, g_idx=None):
                 if np.prod(x.shape[:-1]) > auto_switch_thd:
                     output = _matmul4bit_v2_recons(x.half(), qweight, scales.half(), zeros, g_idx)
                 else:
-                    output = _matmul4bit_v2(x, qweight, scales, zeros, g_idx)
+                    output = _matmul4bit_v2(x, qweight, scales, zeros, g_idx, groupsize)
         else:
-            output = _matmul4bit_v2(x, qweight, scales, zeros, g_idx)
+            output = _matmul4bit_v2(x, qweight, scales, zeros, g_idx, groupsize)
     return output
 
 
