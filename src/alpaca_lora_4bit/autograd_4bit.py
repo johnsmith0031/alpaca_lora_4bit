@@ -323,7 +323,7 @@ def load_llama_model_4bit_low_ram_and_offload(config_path, model_path, lora_path
 
     if lora_path is not None:
         # Apply Monkey Patch
-        from monkeypatch.peft_tuners_lora_monkey_patch import replace_peft_model_with_int4_lora_model
+        from .monkeypatch.peft_tuners_lora_monkey_patch import replace_peft_model_with_int4_lora_model
         replace_peft_model_with_int4_lora_model()
         from peft import PeftModel
         from .models import Linear4bitLt
