@@ -19,7 +19,11 @@ class NewForward:
     def new_forward(self, *args, **kwargs):
         def func(*args):
             return self.layer.old_forward_for_cp(*args, **kwargs)
-        output = checkpoint(func, *args)
+
+        if self.layer.training:
+            output = checkpoint(func, *args)
+        else:
+            output = func(*args)
         return output
 
 
