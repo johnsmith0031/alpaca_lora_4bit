@@ -186,6 +186,21 @@ void vecquant4matmul_seq_v2(
   vecquant4matmul_seq_v2_cuda(vec, mat_t, mul, scales_t, zeros_t, g_idx);
 }
 
+void vecquant4matmul_g_cuda(
+  torch::Tensor vec, torch::Tensor mat, torch::Tensor mul,
+  torch::Tensor scales, torch::Tensor zeros,
+  torch::Tensor g_idx, int vec_height
+);
+
+void vecquant4matmul_g(
+  torch::Tensor vec, torch::Tensor mat, torch::Tensor mul,
+  torch::Tensor scales, torch::Tensor zeros,
+  torch::Tensor g_idx, int vec_height
+) {
+  const at::cuda::OptionalCUDAGuard device_guard(device_of(vec));
+  vecquant4matmul_g_cuda(vec, mat, mul, scales, zeros, g_idx, vec_height);
+}
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("vecquant2matmul", &vecquant2matmul, "Vector 2-bit Quantized Matrix Multiplication (CUDA)");
   m.def("vecquant3matmul", &vecquant3matmul, "Vector 3-bit Quantized Matrix Multiplication (CUDA)");
@@ -206,4 +221,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
   // Seq Kernel (Experimental)
   m.def("vecquant4matmul_seq_v2", &vecquant4matmul_seq_v2, "Vector 4-bit Quantized Matrix Multiplication (CUDA), sequential version, v2 support");
+
+  // Copy from GPTQ for LLAMA fastest inference branch
+  m.def("vecquant4matmul_g", &vecquant4matmul_g, "Vector 4-bit Quantized Matrix Multiplication (CUDA) (act-order)");
 }
