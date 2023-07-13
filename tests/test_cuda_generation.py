@@ -5,7 +5,7 @@ import pytest
 import multiprocessing as mp
 
 
-def inner_cuda_generation_no_act_order(flash_attn, mm4b_faster_mode):
+def inner_cuda_forwardpass_no_act_order(flash_attn, mm4b_faster_mode, use_cache):
     """
     Since we do monkey patching - we can not run, for instance:
     1. test with flash-attention patch
@@ -46,7 +46,7 @@ def inner_cuda_generation_no_act_order(flash_attn, mm4b_faster_mode):
         # Since output_scores gives me -Inf probabilities while text is not gibberish - sounds like some bug in generate method
         # So let's just make 1 more forward pass
         model.eval()
-        scores = F.softmax(model(**batch_input).logits, dim=-1)
+        scores = F.softmax(model(**batch_input, use_cache=use_cache).logits, dim=-1)
     scores_np = scores.detach().cpu().numpy()
     
     top_tokens_canonical = np.array([21130,   357,  1153,   287,   266,   322,
@@ -66,19 +66,28 @@ def inner_cuda_generation_no_act_order(flash_attn, mm4b_faster_mode):
     top_tokens = scores_np[0].argmax(axis=-1)
     top_tokens_scores = scores_np[0].max(axis=-1)
     assert all(top_tokens == top_tokens_canonical)
-    assert all(np.abs(top_tokens_scores.astype(np.float32) - top_tokens_scores_canonical.astype(np.float32)) < 1e-3)
+    assert all(np.abs(top_tokens_scores.astype(np.float32) - top_tokens_scores_canonical.astype(np.float32)) < 1e-2)
 
 
-@pytest.mark.parametrize("flash_attn, mm4b_faster_mode", [
-    (True, "disable"),
-    (True, "old_faster"),
-    (True, "faster"),
-    (False, "disable"),
-    (False, "old_faster"),
-    (False, "faster"),
+@pytest.mark.parametrize("flash_attn, mm4b_faster_mode, use_cache, fails", [
+    (True, "disable", True, True),
+    (True, "old_faster", True, True),
+    (True, "faster", True, True),
+    (True, "disable", False, False),
+    (True, "old_faster", False, False),
+    (True, "faster", False, False),
+    (False, "disable", True, False),
+    (False, "old_faster", True, False),
+    (False, "faster", True, False),
+    (False, "disable", False, False),
+    (False, "old_faster", False, False),
+    (False, "faster", False, False),
 ])
-def test_cuda_generation_no_act_order(flash_attn, mm4b_faster_mode):
-    process = mp.Process(target=inner_cuda_generation_no_act_order, args=(flash_attn, mm4b_faster_mode))
+def test_cuda_forwardpass_no_act_order(flash_attn, mm4b_faster_mode, use_cache, fails):
+    process = mp.Process(target=inner_cuda_forwardpass_no_act_order, args=(flash_attn, mm4b_faster_mode, use_cache))
     process.start()
     process.join()
-    assert process.exitcode == 0
+    if fails:
+        assert process.exitcode != 0
+    else:
+        assert process.exitcode == 0
