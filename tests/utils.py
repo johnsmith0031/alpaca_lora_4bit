@@ -2,6 +2,7 @@ import torch
 import random
 import numpy as np
 from huggingface_hub import hf_hub_download
+import os
 
 
 def get_test_alpaca_no_act_order_model():
@@ -16,8 +17,7 @@ def get_test_alpaca_no_act_order_model():
             repo_id=repository,
             filename=file,
         )
-    raise ValueError(local_paths)
-    return local_paths["config.json"], local_paths["orca-mini-7b-GPTQ-4bit-128g.no-act.order.safetensors"]
+    return os.path.dirname(local_paths["config.json"]), local_paths["orca-mini-7b-GPTQ-4bit-128g.no-act.order.safetensors"]
 
 
 def set_seeds(seed):
