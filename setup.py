@@ -24,6 +24,9 @@ setup(
     install_requires=install_requires,
     extras_require={
         'triton': 'triton',
+        'dev': [
+            'pytest',
+        ],
     },
     ext_modules=[quant_cuda_module],
     cmdclass={'build_ext': BuildExtension},
