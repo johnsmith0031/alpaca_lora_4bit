@@ -22,9 +22,11 @@ def inner_cuda_forwardpass_no_act_order(flash_attn, mm4b_faster_mode, use_cache)
     
     if flash_attn:
         replace_llama_attn_with_flash_attn()
-    autograd_4bit.backend = "cuda"
+    
+    autograd_4bit.switch_backend_to("cuda")
     mm4b.act_order = False
     mm4b.faster_mode = mm4b_faster_mode
+
     config_path, weights_path = get_test_alpaca_no_act_order_model()
     model, tokenizer = autograd_4bit.load_llama_model_4bit_low_ram(
         config_path=config_path,
@@ -34,13 +36,15 @@ def inner_cuda_forwardpass_no_act_order(flash_attn, mm4b_faster_mode, use_cache)
         bits=4,
     )
     autograd_4bit.model_to_half(model)
-    AMPWrapper(model).apply_generate()
+    AMPWrapper(model).apply_forward()
+
     prompt = '''I think the meaning of life is to find happiness, and that's something you have to work for and fight for every day.'''
     batch_input = tokenizer(prompt, return_tensors="pt", add_special_tokens=False)
     batch_input = {
         k: v.to(model.device)
         for k, v in batch_input.items()
     }
+
     set_seeds(42)
     with torch.no_grad():
         # Since output_scores gives me -Inf probabilities while text is not gibberish - sounds like some bug in generate method
