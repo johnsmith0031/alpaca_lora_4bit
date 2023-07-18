@@ -181,10 +181,10 @@ if not ft_config.skip:
     model.config.use_cache = False
 
     # Set Model dict
-    old_state_dict = model.state_dict
-    model.state_dict = (
-        lambda self, *_, **__: get_peft_model_state_dict(self, old_state_dict())
-    ).__get__(model, type(model))
+    # old_state_dict = model.state_dict
+    # model.state_dict = (
+    #     lambda self, *_, **__: get_peft_model_state_dict(self, old_state_dict())
+    # ).__get__(model, type(model))
 
     # Set Verbose
     if ft_config.verbose:
@@ -194,14 +194,16 @@ if not ft_config.skip:
     with wandb.init(project="alpaca_lora_4bit") as run:
         if ft_config.resume_checkpoint:
             print('Resuming from {} ...'.format(ft_config.resume_checkpoint))
-            state_dict_peft = torch.load(os.path.join(ft_config.resume_checkpoint, 'pytorch_model.bin'), map_location='cpu')
+            import transformers.trainer
+            transformers.trainer.WEIGHTS_NAME = 'adapter_model.bin'
+            state_dict_peft = torch.load(os.path.join(ft_config.resume_checkpoint, 'adapter_model.bin'), map_location='cpu')
             set_peft_model_state_dict(model, state_dict_peft)
-            trainer.train(ft_config.resume_checkpoint)
+            trainer.train(resume_from_checkpoint=ft_config.resume_checkpoint)
         else:
             trainer.train()
 
     # Restore old model state dict
-    model.state_dict = old_state_dict
+    # model.state_dict = old_state_dict
 
     print('Train completed.')
 
