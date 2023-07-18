@@ -5,6 +5,8 @@ Made some adjust for the code in peft and gptq for llama, and make it possible f
 pip install git+https://github.com/johnsmith0031/alpaca_lora_4bit@winglian-setup_pip
 ```
 
+___Note: Main branch would not be maintained anymore. Everyone should use the pip installable version.___
+
 # Model Server
 
 Better inference performance with text_generation_webui, about <b>40% faster</b>
