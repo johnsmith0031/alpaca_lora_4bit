@@ -8,5 +8,5 @@ colorama
 pyzmq
 wandb
 peft
-transformers
+transformers>=4.31.0
 packaging
