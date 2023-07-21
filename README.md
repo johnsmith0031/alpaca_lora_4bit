@@ -5,6 +5,61 @@ Made some adjust for the code in peft and gptq for llama, and make it possible f
 pip install git+https://github.com/johnsmith0031/alpaca_lora_4bit@winglian-setup_pip
 ```
 
+___Note: Main branch would not be maintained anymore. Everyone should use the pip installable version.___
+
+# Model Server
+
+Better inference performance with text_generation_webui, about <b>40% faster</b>
+
+Simple expriment results:<br>
+7b model with groupsize=128 no act-order<br>
+improved from 13 tokens/sec to 20 tokens/sec
+
+<b>Step:</b>
+1. run model server process
+2. run webui process with monkey patch
+
+<b>Example</b>
+
+run_server.sh
+```
+#!/bin/bash
+
+export PYTHONPATH=$PYTHONPATH:./
+
+CONFIG_PATH=
+MODEL_PATH=
+LORA_PATH=
+
+VENV_PATH=
+source $VENV_PATH/bin/activate
+python ./scripts/run_server.py --config_path $CONFIG_PATH --model_path $MODEL_PATH --lora_path $LORA_PATH --groupsize=128 --quant_attn --port 5555 --pub_port 5556
+```
+
+run_webui.sh
+```
+#!/bin/bash
+
+if [ -f "server2.py" ]; then
+    rm server2.py
+fi
+echo "import custom_model_server_monkey_patch" > server2.py
+cat server.py >> server2.py
+
+export PYTHONPATH=$PYTHONPATH:../
+
+VENV_PATH=
+source $VENV_PATH/bin/activate
+python server2.py --chat --listen
+```
+
+<b>Note:</b>
+* quant_attn only support torch 2.0+
+* lora support is only for simple lora with only q_proj and v_proj
+* this patch breaks model selection, lora selection and training feature in webui
+
+# Docker
+
 ## Quick start for running the chat UI
 
 ```
@@ -42,6 +97,16 @@ It's fast on a 3070 Ti mobile.  Uses 5-6 GB of GPU RAM.
 * Removed triton, flash-atten from requirements.txt for compatibility
 * Removed bitsandbytes from requirements
 * Added pip installable branch based on winglian's PR
+* Added cuda backend quant attention and fused mlp from GPTQ_For_Llama.
+* Added lora patch for GPTQ_For_Llama repo triton backend.
+* Added support for llama2 GQA<br>
+
+Usage:
+```
+from monkeypatch.gptq_for_llala_lora_monkey_patch import inject_lora_layers
+inject_lora_layers(model, lora_path, device, dtype)
+```
+* Added Model server for better inference performance with webui (40% faster than original webui which runs model and gradio in same process)
 
 # Requirements
 gptq-for-llama <br>
@@ -132,4 +197,18 @@ pip install xformers
 ```
 from monkeypatch.llama_attn_hijack_xformers import hijack_llama_attention
 hijack_llama_attention()
+```
+
+# Quant Attention and MLP Patch
+
+Note: Currently does not support peft lora, but can use inject_lora_layers to load simple lora with only q_proj and v_proj.<br>
+
+Usage:
+```
+from model_attn_mlp_patch import make_quant_attn, make_fused_mlp, inject_lora_layers
+make_quant_attn(model)
+make_fused_mlp(model)
+
+# Lora
+inject_lora_layers(model, lora_path)
 ```
