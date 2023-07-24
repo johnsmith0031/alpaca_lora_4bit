@@ -1,10 +1,3 @@
-import os
-import sys
-# set src so alpaca_lora_4bit package is available without installing
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-src_dir = os.path.join(project_root, "src")
-sys.path.insert(0, src_dir)
-
 import time
 import torch
 from alpaca_lora_4bit.autograd_4bit import load_llama_model_4bit_low_ram, Autograd4bitQuantLinear
@@ -13,6 +6,10 @@ replace_peft_model_with_int4_lora_model()
 
 config_path = './llama-13b-4bit/'
 model_path = './llama-13b-4bit.pt'
+
+# For test lora, Use this:
+# load_llama_model_4bit_low_ram_and_offload(config_path, model_path, lora_path=None, groupsize=-1, seqlen=2048, max_memory=None, is_v1_model=False, bits=4)
+
 model, tokenizer = load_llama_model_4bit_low_ram(config_path, model_path, groupsize=-1)
 
 print('Fitting 4bit scales and zeros to half')
