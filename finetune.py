@@ -77,7 +77,14 @@ lora_config = LoraConfig(
     bias="none",
     task_type="CAUSAL_LM",
 )
-if ft_config.lora_apply_dir is None:
+if ft_config.checkpoint:
+    adapter_weights = torch.load(f'{ft_config.lora_apply_dir}/adapter_model.bin')
+    print("Merging model")
+    # Merge the adapter weights into the base model
+    for name, param in model.named_parameters():
+        if name in adapter_weights:
+            param.data = adapter_weights[name]
+elif ft_config.lora_apply_dir is None:
     model = get_peft_model(model, lora_config)
 else:
     device_map = ft_config.device_map
@@ -198,8 +205,12 @@ if not ft_config.skip:
 
     print('Train completed.')
 
-# Save Model
-model.save_pretrained(ft_config.lora_out_dir)
+if ft_config.checkpoint:
+    # Save the merged model
+    model.save_pretrained(f'{ft_config.lora_out_dir}/merged/')
+else:
+    # Save Model
+    model.save_pretrained(ft_config.lora_out_dir)
 
 if ft_config.checkpoint:
     print("Warning: Merge model + LoRA and save the whole checkpoint not implemented yet.")
