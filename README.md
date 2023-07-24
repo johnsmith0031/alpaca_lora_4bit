@@ -29,10 +29,6 @@ It's fast on a 3070 Ti mobile.  Uses 5-6 GB of GPU RAM.
 
 ![](alpaca_lora_4bit_penguin_fact.gif)
 
-# Development
-* Install Manual by s4rduk4r: https://github.com/s4rduk4r/alpaca_lora_4bit_readme/blob/main/README.md
-* Also Remember to create a venv if you do not want the packages be overwritten.
-
 # Update Logs
 * Resolved numerically unstable issue
 * Reconstruct fp16 matrix from 4bit data and call torch.matmul largely increased the inference speed.
@@ -58,20 +54,9 @@ It's fast on a 3070 Ti mobile.  Uses 5-6 GB of GPU RAM.
 * Added support for flash attention 2
 * Updated install manual<br>
 
-# Requirements
-gptq-for-llama <br>
-peft<br>
-The specific version is inside requirements.txt<br>
-
-# Install
-
-```
-pip install -r requirements.txt
-```
-
 # Finetune
 
-After installation, this script can be used. Use --v1 flag for v1 model.
+After installation, this script can be used.
 
 ```
 python finetune.py ./data.txt \
