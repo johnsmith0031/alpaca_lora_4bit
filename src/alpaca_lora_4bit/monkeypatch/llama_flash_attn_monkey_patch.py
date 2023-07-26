@@ -60,9 +60,9 @@ def flash_attn_forward_gqa(
         if not output_attentions:
             
             # GQA Support
-            query_states = query_states.transpose(1, 2)
-            key_states = key_states.transpose(1, 2)
-            value_states = value_states.transpose(1, 2)
+            query_states = query_states.transpose(1, 2).contiguous()
+            key_states = key_states.transpose(1, 2).contiguous()
+            value_states = value_states.transpose(1, 2).contiguous()
             
             # q: (batch_size, seqlen, nheads, headdim)
             # k: (batch_size, seqlen, nheads_k, headdim)
@@ -70,6 +70,7 @@ def flash_attn_forward_gqa(
             # flash_attn_func(q, k, v, dropout_p=0.0, softmax_scale=None, causal=False)
 
             if attention_mask is None or attention_mask[0, 0, 0, 1] == 0:
+                # Note: flash_attn_func does not support custom attention_mask
                 attn_output = flash_attn_func(query_states, key_states, value_states, dropout_p=0.0, softmax_scale=None)
             else:
                 attn_output = flash_attn_func(query_states, key_states, value_states, dropout_p=0.0, softmax_scale=None, causal=True)
