@@ -1,10 +1,10 @@
 import time
 import torch
-import autograd_4bit
-from autograd_4bit import load_llama_model_4bit_low_ram, Autograd4bitQuantLinear
+import alpaca_lora_4bit.autograd_4bit
+from alpaca_lora_4bit.autograd_4bit import load_llama_model_4bit_low_ram, Autograd4bitQuantLinear
 from peft import PeftModel
-from monkeypatch.peft_tuners_lora_monkey_patch import replace_peft_model_with_int4_lora_model
-from models import Linear4bitLt
+from alpaca_lora_4bit.monkeypatch.peft_tuners_lora_monkey_patch import replace_peft_model_with_int4_lora_model
+from alpaca_lora_4bit.models import Linear4bitLt
 replace_peft_model_with_int4_lora_model()
 
 patch_encode_func = False
