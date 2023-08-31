@@ -83,112 +83,77 @@ class Linear4bitLt(Autograd4bitQuantLinear, LoraLayer):
 
 
 class GPTQLoraModel(lora.LoraModel):
-    def _find_and_replace(self, adapter_name):
-        lora_config = self.peft_config[adapter_name]
-        loaded_in_8bit = False
-        is_target_modules_in_base_model = False
-        kwargs = {
-            "r": lora_config.r,
-            "lora_alpha": lora_config.lora_alpha,
-            "lora_dropout": lora_config.lora_dropout,
-            "fan_in_fan_out": lora_config.fan_in_fan_out,
-            "init_lora_weights": lora_config.init_lora_weights,
-        }
-        key_list = [key for key, _ in self.model.named_modules()]
-        for key in key_list:
-            if isinstance(lora_config.target_modules, str):
-                target_module_found = re.fullmatch(lora_config.target_modules, key)
-            else:
-                target_module_found = any(key.endswith(target_key) for target_key in lora_config.target_modules)
-            if target_module_found:
-                if not is_target_modules_in_base_model:
-                    is_target_modules_in_base_model = True
-                parent, target, target_name = _get_submodules(self.model, key)
-                bias = target.bias is not None
-                if isinstance(target, LoraLayer):
-                    target.update_layer(
-                        adapter_name,
-                        lora_config.r,
-                        lora_config.lora_alpha,
-                        lora_config.lora_dropout,
-                        lora_config.init_lora_weights,
-                    )
-                else:
-                    if loaded_in_8bit and isinstance(target, bnb.nn.Linear8bitLt):
-                        kwargs.update(
-                            {
-                                "has_fp16_weights": target.state.has_fp16_weights,
-                                "memory_efficient_backward": target.state.memory_efficient_backward,
-                                "threshold": target.state.threshold,
-                                "index": target.index,
-                            }
-                        )
-                        new_module = Linear8bitLt(
-                            adapter_name, target.in_features, target.out_features, bias=bias, **kwargs
-                        )
-                    elif isinstance(target, Autograd4bitQuantLinear):
-                        new_module = Linear4bitLt(adapter_name, target.in_features, target.out_features, target.groupsize, target.is_v1_model, bias=bias, **kwargs)
-                    else:
-                        if isinstance(target, torch.nn.Linear):
-                            in_features, out_features = target.in_features, target.out_features
-                            if kwargs["fan_in_fan_out"]:
-                                warnings.warn(
-                                    "fan_in_fan_out is set to True but the target module is `torch.nn.Linear`. "
-                                    "Setting fan_in_fan_out to False."
-                                )
-                                kwargs["fan_in_fan_out"] = lora_config.fan_in_fan_out = False
-                        elif isinstance(target, Conv1D):
-                            in_features, out_features = (
-                                target.weight.ds_shape if hasattr(target.weight, "ds_shape") else target.weight.shape
-                            )
-                            if not kwargs["fan_in_fan_out"]:
-                                warnings.warn(
-                                    "fan_in_fan_out is set to False but the target module is `Conv1D`. "
-                                    "Setting fan_in_fan_out to True."
-                                )
-                                kwargs["fan_in_fan_out"] = lora_config.fan_in_fan_out = True
-                        else:
-                            raise ValueError(
-                                f"Target module {target} is not supported. "
-                                f"Currently, only `torch.nn.Linear` and `Conv1D` are supported."
-                            )
-                        new_module = Linear(adapter_name, in_features, out_features, bias=bias, **kwargs)
+    @staticmethod
+    def _create_new_module(lora_config, adapter_name, target, **kwargs):
+        bias = kwargs.pop("bias", False)
 
-                    self._replace_module(parent, target_name, new_module, target)
-        if not is_target_modules_in_base_model:
-            raise ValueError(
-                f"Target modules {lora_config.target_modules} not found in the base model. "
-                f"Please check the target modules and try again."
-            )
-
-    def _replace_module(self, parent_module, child_name, new_module, old_module):
-        setattr(parent_module, child_name, new_module)
-        if isinstance(old_module, Autograd4bitQuantLinear) and isinstance(new_module, Linear4bitLt):
-            new_module.qweight = old_module.qweight
-            new_module.scales = old_module.scales
-            if old_module.is_v1_model:
-                new_module.zeros = old_module.zeros
-            else:
-                new_module.qzeros = old_module.qzeros
-                new_module.g_idx = old_module.g_idx
-            new_module.bias = old_module.bias
-            if getattr(old_module, "state", None) is not None:
-                new_module.state = old_module.state
-                new_module.to(old_module.qweight.device)
-
-            # dispatch to correct device
-            for name, module in new_module.named_modules():
-                if "lora_" in name:
-                    module.to(old_module.qweight.device)
+        if isinstance(target, Autograd4bitQuantLinear):
+            new_module = Linear4bitLt(adapter_name, target.in_features, target.out_features, target.groupsize, target.is_v1_model, bias=bias, **kwargs)
         else:
-            new_module.weight = old_module.weight
-            if old_module.bias is not None:
-                new_module.bias = old_module.bias
-            if getattr(old_module, "state", None) is not None:
-                new_module.state = old_module.state
-                new_module.to(old_module.weight.device)
+            if isinstance(target, torch.nn.Linear):
+                in_features, out_features = target.in_features, target.out_features
+                if kwargs["fan_in_fan_out"]:
+                    warnings.warn(
+                        "fan_in_fan_out is set to True but the target module is `torch.nn.Linear`. "
+                        "Setting fan_in_fan_out to False."
+                    )
+                    kwargs["fan_in_fan_out"] = lora_config.fan_in_fan_out = False
+            elif isinstance(target, Conv1D):
+                in_features, out_features = (
+                    target.weight.ds_shape if hasattr(target.weight, "ds_shape") else target.weight.shape
+                )
+                kwargs["is_target_conv_1d_layer"] = True
+                if not kwargs["fan_in_fan_out"]:
+                    warnings.warn(
+                        "fan_in_fan_out is set to False but the target module is `Conv1D`. "
+                        "Setting fan_in_fan_out to True."
+                    )
+                    kwargs["fan_in_fan_out"] = lora_config.fan_in_fan_out = True
+            else:
+                raise ValueError(
+                    f"Target module {target} is not supported. "
+                    f"Currently, only `torch.nn.Linear` and `Conv1D` are supported."
+                )
+            new_module = Linear(adapter_name, in_features, out_features, bias=bias, **kwargs)
+
+        return new_module
+
+
+    @staticmethod
+    def _replace_module(parent, child_name, new_module, child):
+        setattr(parent, child_name, new_module)
+        if isinstance(child, Autograd4bitQuantLinear) and isinstance(new_module, Linear4bitLt):
+            new_module.qweight = child.qweight
+            new_module.scales = child.scales
+            if child.is_v1_model:
+                new_module.zeros = child.zeros
+            else:
+                new_module.qzeros = child.qzeros
+                new_module.g_idx = child.g_idx
+            new_module.bias = child.bias
+            if getattr(child, "state", None) is not None:
+                new_module.state = child.state
+                new_module.to(child.qweight.device)
 
             # dispatch to correct device
             for name, module in new_module.named_modules():
                 if "lora_" in name:
-                    module.to(old_module.weight.device)
+                    module.to(child.qweight.device)
+                if "ranknum" in name:
+                    module.to(child.qweight.device)
+        else:
+            new_module.weight = child.weight
+            if hasattr(child, "bias"):
+                if child.bias is not None:
+                    new_module.bias = child.bias
+
+            if getattr(child, "state", None) is not None:
+                new_module.state = child.state
+                new_module.to(child.weight.device)
+
+            # dispatch to correct device
+            for name, module in new_module.named_modules():
+                if "lora_" in name:
+                    module.to(child.weight.device)
+                if "ranknum" in name:
+                    module.to(child.weight.device)
