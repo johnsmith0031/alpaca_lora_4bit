@@ -175,15 +175,12 @@ class TrainSAD(ATrainData):
 
     # Auxiliary methods
     def generate_prompt(self, data_point, **kwargs):
-        return "{0}\n\n{1}\n{2}\n\n{3}\n{4}\n\n{5}\n{6}".format(
-            "Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.",
-            "### Instruction:",
-            data_point["instruction"],
-            "### Input:",
-            data_point["input"],
-            "### Response:",
-            data_point["output"]
-        )
+        prompt = "Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\n\n"
+        prompt += f"### Instruction:\n{data_point['instruction']}\n\n"
+        if 'input' in data_point:
+            prompt += f"### Input:\n{data_point['input']}\n\n"
+        prompt += f"### Response:\n{data_point['output']}"
+        return prompt
 
     def generate_and_tokenize_prompt(self, data_point, **kwargs):
         prompt = self.generate_prompt(data_point, **kwargs)
