@@ -176,11 +176,11 @@ __global__ void VecQuant4MatMulKernelFaster(
     int zero_width
 );
 
-const int BLOCKWIDTH  = 256;
-const int BLOCKHEIGHT2 =  16;
-const int BLOCKHEIGHT3 =  24;
-const int BLOCKHEIGHT4 =  32;
-const int BLOCKHEIGHT8 =  64;
+const int BLOCKWIDTH  = 128;
+const int BLOCKHEIGHT2 =  8;
+const int BLOCKHEIGHT3 =  12;
+const int BLOCKHEIGHT4 =  16;
+const int BLOCKHEIGHT8 =  32;
 
 __device__ inline unsigned int as_unsigned(int i) {
   return *reinterpret_cast<unsigned int*>(&i);

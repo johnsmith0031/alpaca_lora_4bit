@@ -10,9 +10,17 @@ git checkout winglian-setup_pip
 pip install .
 ```
 
+To uninstall and reinstall, run:
+```
+cd alpaca_lora_4bit
+pip uninstall alpaca_lora_4bit
+pip uninstall alpaca_lora_4bit # uninstall again to ensure that you do not have another version
+pip install .
+```
+
 # Docker
 
-*note: not sure if it works now*
+*note: Currently does not work*
 
 ## Quick start for running the chat UI
 
@@ -52,7 +60,8 @@ It's fast on a 3070 Ti mobile.  Uses 5-6 GB of GPU RAM.
 * Added lora patch for GPTQ_For_Llama repo triton backend.
 * Added support for llama2 GQA
 * Added support for flash attention 2
-* Updated install manual<br>
+* Updated install manual
+* Changed block size from 256 to 128 to support more 4bit models<br>
 
 # Finetune
 
