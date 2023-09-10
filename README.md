@@ -18,6 +18,15 @@ pip uninstall alpaca_lora_4bit # uninstall again to ensure that you do not have 
 pip install .
 ```
 
+For older cards that failed to compile:
+```
+git clone https://github.com/johnsmith0031/alpaca_lora_4bit.git
+cd alpaca_lora_4bit
+git fetch origin old_compatible
+git checkout old_compatible
+pip install .
+```
+
 # Docker
 
 *note: Currently does not work*
