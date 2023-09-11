@@ -22,7 +22,7 @@ RUN --mount=type=cache,target=/root/.cache pip install --user .
 # -------------------------------
 
 # Download the model
-FROM nvidia/cuda:11.7.0-devel-ubuntu22.04 AS downloader
+FROM nvidia/cuda:11.7.1-devel-ubuntu22.04 AS downloader
 RUN apt-get update && apt-get install -y wget
 
 RUN wget --progress=bar:force:noscroll https://huggingface.co/decapoda-research/llama-7b-hf-int4/resolve/main/llama-7b-4bit.pt
