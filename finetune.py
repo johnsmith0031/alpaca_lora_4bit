@@ -18,10 +18,6 @@
 """
 import os
 import sys
-# set src so alpaca_lora_4bit package is available without installing
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-src_dir = os.path.join(project_root, "src")
-sys.path.insert(0, src_dir)
 
 # Early load config to replace attn if needed
 from alpaca_lora_4bit.arg_parser import get_config
@@ -53,7 +49,7 @@ import wandb
 import torch
 import transformers
 from alpaca_lora_4bit.autograd_4bit import load_llama_model_4bit_low_ram
-from peft import LoraConfig, get_peft_model, get_peft_model_state_dict, PeftModel, set_peft_model_state_dict
+from peft import LoraConfig, get_peft_model, PeftModel
 
 # ! Config
 from alpaca_lora_4bit import train_data
@@ -98,7 +94,6 @@ else:
     print('Device map for lora:', device_map)
     model = PeftModel.from_pretrained(model, ft_config.lora_apply_dir, device_map=device_map, torch_dtype=torch.float32, is_trainable=True)
     print(ft_config.lora_apply_dir, 'loaded')
-
 
 # Scales to half
 print('Fitting 4bit scales and zeros to half')
@@ -180,12 +175,6 @@ if not ft_config.skip:
     )
     model.config.use_cache = False
 
-    # Set Model dict
-    # old_state_dict = model.state_dict
-    # model.state_dict = (
-    #     lambda self, *_, **__: get_peft_model_state_dict(self, old_state_dict())
-    # ).__get__(model, type(model))
-
     # Set Verbose
     if ft_config.verbose:
         transformers.logging.set_verbosity_info()
@@ -194,16 +183,9 @@ if not ft_config.skip:
     with wandb.init(project="alpaca_lora_4bit") as run:
         if ft_config.resume_checkpoint:
             print('Resuming from {} ...'.format(ft_config.resume_checkpoint))
-            import transformers.trainer
-            transformers.trainer.WEIGHTS_NAME = 'adapter_model.bin'
-            state_dict_peft = torch.load(os.path.join(ft_config.resume_checkpoint, 'adapter_model.bin'), map_location='cpu')
-            set_peft_model_state_dict(model, state_dict_peft)
             trainer.train(resume_from_checkpoint=ft_config.resume_checkpoint)
         else:
             trainer.train()
-
-    # Restore old model state dict
-    # model.state_dict = old_state_dict
 
     print('Train completed.')
 

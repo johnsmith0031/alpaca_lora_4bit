@@ -1,6 +1,6 @@
 alpaca_lora/
 repository/
-__pycache__/
+*__pycache__*
 llama-13b-4bit
 llama-13b-4bit.pt
 text-generation-webui/
@@ -8,3 +8,8 @@ repository/
 build/
 dist/
 *.egg-info*
+*test*
+*wandb*
+*.json
+*.sh
+*.txt

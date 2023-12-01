@@ -46,39 +46,33 @@ class Linear4bitLt(Autograd4bitQuantLinear, LoraLayer):
 
         init_lora_weights = kwargs.pop("init_lora_weights", True)
         self.update_layer(adapter_name, r, lora_alpha, lora_dropout, init_lora_weights)
-        self.active_adapter = adapter_name
+        self.set_adapter(adapter_names=[adapter_name])
 
     def forward(self, x: torch.Tensor):
         result = super().forward(x)
+        previous_dtype = result.dtype
 
-        if self.disable_adapters or self.active_adapter not in self.lora_A.keys():
+        if self.disable_adapters:
             return result
-        elif self.r[self.active_adapter] > 0:
-            if not torch.is_autocast_enabled():
-                expected_dtype = result.dtype
+        else:
+            for active_adapter in self.active_adapters:
+                if active_adapter not in self.lora_A.keys():
+                    continue
+                lora_A = self.lora_A[active_adapter]
+                lora_B = self.lora_B[active_adapter]
+                dropout = self.lora_dropout[active_adapter]
+                scaling = self.scaling[active_adapter]
+                x = x.to(lora_A.weight.dtype)
+                result += lora_B(lora_A(dropout(x))) * scaling
 
-                if x.dtype != torch.float32:
-                    x = x.float()
-                output = (
-                        self.lora_B[self.active_adapter](
-                            self.lora_A[self.active_adapter](self.lora_dropout[self.active_adapter](x))
-                        ).to(expected_dtype)
-                        * self.scaling[self.active_adapter]
-                )
-            else:
-                output = (
-                        self.lora_B[self.active_adapter](
-                            self.lora_A[self.active_adapter](self.lora_dropout[self.active_adapter](x))
-                        )
-                        * self.scaling[self.active_adapter]
-                )
-            result += output
+        result = result.to(previous_dtype)
         return result
 
     @property
     def weight(self):
         class WeightDeviceClass:
             device = self.qweight.device
+            dtype = self.qweight.dtype
         return WeightDeviceClass()
 
 
@@ -142,13 +136,23 @@ class GPTQLoraModel(lora.LoraModel):
                 if "ranknum" in name:
                     module.to(child.qweight.device)
         else:
-            new_module.weight = child.weight
-            if hasattr(child, "bias"):
-                if child.bias is not None:
+            # child layer wraps the original module, unpack it
+            if hasattr(child, "base_layer"):
+                child = child.base_layer
+            elif hasattr(child, "quant_linear_module"):
+                child = child.quant_linear_module
+
+            # TODO: layers with base_layer don't need the weight to be copied, as they have a reference already
+            if not hasattr(new_module, "base_layer"):
+                new_module.weight = child.weight
+                if hasattr(child, "bias"):
                     new_module.bias = child.bias
 
             if getattr(child, "state", None) is not None:
-                new_module.state = child.state
+                if hasattr(new_module, "base_layer"):
+                    new_module.base_layer.state = child.state
+                else:
+                    new_module.state = child.state
                 new_module.to(child.weight.device)
 
             # dispatch to correct device

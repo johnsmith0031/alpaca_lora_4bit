@@ -1,5 +1,4 @@
 torch
-accelerate>=0.22.0
 datasets
 sentencepiece
 safetensors
@@ -7,6 +6,7 @@ einops
 colorama
 pyzmq
 wandb
-peft>=0.5.0
-transformers>=4.31.0
+accelerate==0.24.*
+peft==0.6.*
+transformers==4.35.*
 packaging
