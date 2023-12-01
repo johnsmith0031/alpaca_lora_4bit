@@ -4,7 +4,7 @@ repository/
 llama-13b-4bit
 llama-13b-4bit.pt
 text-generation-webui/
-repository/
+*repositories*
 build/
 dist/
 *.egg-info*
